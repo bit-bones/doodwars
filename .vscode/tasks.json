@@ -1,0 +1,24 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Run LÖVE",
+            "type": "process",
+            "command": "C:\\Program Files\\LOVE\\lovec.exe",
+            "args": [
+                "."
+            ],
+            "isBackground": false,
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true,
+                "close": true
+            }
+        }
+    ]
+}
