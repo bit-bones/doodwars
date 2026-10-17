@@ -1,6 +1,6 @@
 local anim8 = require("libs/anim8")
 local pathfun = require("libs/pathfun")
-local navmesh = require("maps/map1-navmesh")
+local navmesh = require("maps/map1shrinetest-navmesh")
 local navigation = pathfun.Navigation(navmesh)
 
 love.graphics.setDefaultFilter("nearest", "nearest")
@@ -195,6 +195,11 @@ function M.healTarget(d, dt, target)
         target.hp = target.maxHp
         target.state = "idle"
         target.animation = target.animations.idle
+        target.scanTimer = 0
+        if target.joint then
+            target.joint:destroy()
+            target.joint = nil
+        end
         d.rescueTarget = nil
         d.state = "idle"
         d.animation = d.animations.idle
@@ -215,7 +220,7 @@ function M.doodScan(d, g)
             end
         end
 
-        if dd ~= d and dd.color == d.color and dd.state == "downed" then
+        if dd ~= d and dd.color == d.color and dd.state == "downed" and not dd.joint then
             local dis = love.physics.getDistance(d.fixture, dd.fixture)
             if dis <= DEFAULTS.SCAN_RADIUS then
                 downFriendlyDistances[ii] = dis
@@ -259,7 +264,7 @@ function M.update(dt, g)
 
                 if d.hp > 0 then
                     d.animation = d.animations.idle
-                else
+                elseif d.hp <= 0 then
                     d.hp = 0
                     if d.attackers then
                         for _, attacker in pairs(d.attackers) do
@@ -279,7 +284,7 @@ function M.update(dt, g)
                     d.moveTargetX = nil
                     d.moveTargetY = nil
                     M.clearTargets(d)
-                    d.body:setLinearDamping(50)
+                    d.body:setLinearDamping(30)
                     d.state = "downed"
                     d.animation = d.animations.death
                 end
@@ -289,6 +294,10 @@ function M.update(dt, g)
         if not d.playerControlled and d.hurtTimer <= 0 and d.state ~= "downed" then
             -- attack
             if d.attackTarget then
+                if d.attackTarget.state == "downed" or d.attackTarget.hp <= 0 then
+                    d.attackTarget = nil
+                    return
+                end
                 local distance = love.physics.getDistance(d.fixture, d.attackTarget.fixture)
 
                 if distance <= d.collisionRadius * 2 then
@@ -338,6 +347,7 @@ function M.update(dt, g)
                     if d.state == "rescue" then
                         local scan = M.doodScan(d.rescueTarget, g)
                         local closestEnemy = scan.closestEnemy
+
                         if d.priority == "Default" then
                             if closestEnemy.index then
                                 M.setAttackTarget(d, g, closestEnemy.index)
@@ -353,6 +363,7 @@ function M.update(dt, g)
                                 local bodyX, bodyY = d.body:getPosition()
                                 local targetBodyX, targetbodyY = d.rescueTarget.body:getPosition()
                                 d.rescueTarget.joint = love.physics.newDistanceJoint(d.body, d.rescueTarget.body, bodyX, bodyY, targetBodyX, targetbodyY, false)
+
                                 if d.rescueTarget.joint then
                                     if closestEnemy.x < bodyX then
                                         d.moveTargetX = closestEnemy.x + DEFAULTS.SAFE_RESCUE_DISTANCE
@@ -371,9 +382,9 @@ function M.update(dt, g)
                         elseif d.priority == "Nearest" then
                             M.healTarget(d, dt, d.rescueTarget)
                         end
-                    else
-                        d.moveTargetX, d.moveTargetY = d.rescueTarget.body:getPosition()
                     end
+                else
+                    d.moveTargetX, d.moveTargetY = d.rescueTarget.body:getPosition()
                 end
             end
 
@@ -488,7 +499,7 @@ function M.newDood(x, y, color, g)
         maxHp = DEFAULTS.HP,
         damage = DEFAULTS.DAMAGE,
         moveSpeed = DEFAULTS.MOVE_SPEED,
-        priority = "Default",
+        priority = "Medic",
         state = "idle",
         dir = "down",
         x = x,

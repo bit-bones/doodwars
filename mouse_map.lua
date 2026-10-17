@@ -85,7 +85,7 @@ local mouseMap = {
                     if clickedDood then
                         if clickedDood.color ~= d.color then
                             dood.M.setAttackTarget(d, g, clickedDood.index)
-                        elseif clickedDood ~= d and clickedDood.color == d.color and clickedDood.state == "downed" then
+                        elseif clickedDood ~= d and clickedDood.color == d.color and clickedDood.state == "downed" and not clickedDood.joint then
                             d.rescueTarget = clickedDood
                         end
                     else
@@ -107,7 +107,6 @@ local mouseMap = {
         down = function (dt, g)
             local dx = g.mouseCameraX - g.previousMouseCameraX
             local dy = g.mouseCameraY - g.previousMouseCameraY
-            -- g.camera:move(-dx * dt, -dy * dt)
             g.camera:lockPosition(g.camera.x - dx * g.middleMousePanSpeed, g.camera.y - dy * g.middleMousePanSpeed)
         end,
 

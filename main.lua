@@ -2,6 +2,7 @@ require("debug_helpers")
 
 local game = require("game")
 local dood = require("dood")
+local shrineRegistry = require("shrine")
 
 local key_map = require("key_map")
 local keyRegistry = key_map.M
@@ -10,10 +11,8 @@ local mouse_map = require("mouse_map")
 local mouseRegistry = mouse_map.M
 
 local sti = require("libs/sti")
-local pathfun = require("libs/pathfun")
-local navmesh = require("maps/map1-navmesh")
+local navmesh = require("maps/map1shrinetest-navmesh")
 
-local map
 local drawOrder
 
 function love.load()
@@ -21,10 +20,134 @@ function love.load()
 
     love.physics.setMeter(32)
     game.world = love.physics.newWorld(0,0,true)
+
     love.graphics.setDefaultFilter("nearest", "nearest")
 
-    map = sti("maps/map1.lua", {"box2d"})
+    game.map = sti("maps/map1shrinetest.lua", {"box2d"})
+    local map = game.map
     map:box2d_init(game.world)
+
+    local propLayer = map.layers["depth-objects"]
+
+    for _, prop in ipairs(propLayer.objects) do
+        if prop.type == "trees" then
+            local x = propLayer.x + prop.x
+            local y = propLayer.y + prop.y
+
+            table.insert(game.props, {
+                x = x,
+                y = y,
+                tileX = math.floor(x / map.tilewidth) + 1,
+                tileY = math.floor(y / map.tileheight) + 1,
+            })
+        else
+            print("prop has no type")
+        end
+    end
+
+    local markerLayer = map.layers["objective-markers"]
+
+    for _, object in ipairs(markerLayer.objects) do
+        if object.type == "shrine" then
+            local x = markerLayer.x + object.x
+            local y = markerLayer.y + object.y
+
+            table.insert(game.shrines, {
+                x = x,
+                y = y,
+                tileX = math.floor(x / map.tilewidth) + 1,
+                tileY = math.floor(y / map.tileheight) + 1,
+                state = object.properties.state or "normal",
+                team = object.properties.color or "neutral",
+            })
+        end
+    end
+
+    local function drawProp(layer, prop)
+        for row = math.max(1, prop.tileY - 3),
+                math.min(layer.height, prop.tileY + 2) do
+            for column = math.max(1, prop.tileX - 2),
+                        math.min(layer.width, prop.tileX + 2) do
+                local tile = layer.data[row] and layer.data[row][column]
+
+                if tile then
+                    local x, y = game.map:getLayerTilePosition(layer, tile, column, row)
+                    local image = game.map.tilesets[tile.tileset].image
+
+                    love.graphics.draw(
+                        image,
+                        tile.quad,
+                        x + layer.x,
+                        y + layer.y
+                    )
+                end
+            end
+        end
+    end
+
+    local depthLayer = map:addCustomLayer("depth-render")
+
+    function depthLayer:draw()
+        local items = {}
+
+        for _, prop in ipairs(game.props) do
+            local currentProp = prop
+            items[#items + 1] = {
+                sortY = currentProp.y,
+                draw = function()
+                    love.graphics.setColor(1, 1, 1, 1)
+                    drawProp(map.layers["trees"], currentProp)
+                end,
+            }
+        end
+
+        for _, s in ipairs(game.shrines) do
+            local currentShrine = s
+            items[#items + 1] = {
+                sortY = currentShrine.y + 3000,
+                draw = function()
+                    love.graphics.setColor(1, 1, 1, 1)
+                    shrineRegistry.drawShrine(currentShrine, game)
+                end,
+            }
+        end
+
+        for _, d in ipairs(game.doods) do
+            local currentDood = d
+            local _, spriteHeight =
+                currentDood.animation[currentDood.dir]:getDimensions()
+
+            items[#items + 1] = {
+                sortY = currentDood.y + spriteHeight * currentDood.scale,
+                draw = function()
+                    love.graphics.setColor(1, 1, 1, 1)
+                    currentDood.animation[currentDood.dir]:draw(
+                        currentDood.animation.image,
+                        currentDood.x,
+                        currentDood.y,
+                        0,
+                        currentDood.scale,
+                        currentDood.scale
+                    )
+                end,
+            }
+        end
+
+        table.sort(items, function(a, b)
+            return a.sortY < b.sortY
+        end)
+
+        for _, item in ipairs(items) do
+            item.draw()
+        end
+
+        love.graphics.setColor(1, 1, 1, 1)
+    end
+
+    game.shrines[1].team = "blue"
+    game.shrines[3].team = "red"
+    game.shrines[7].team = "green"
+    game.shrines[9].team = "yellow"
 
     game.keyStates = key_map.states
     game.mouseStates = mouse_map.states
@@ -34,6 +157,9 @@ function love.load()
         debugHud = love.graphics.newFont(12),
         fun = love.graphics.newFont("assets/fonts/ManlineSlabs-xRWVj.ttf", 12),
     }
+    for i, v in pairs(game.fonts) do
+        game.fontHeights[i] = v:getHeight()
+    end
 end
 
 local function getLayouts()
@@ -86,7 +212,7 @@ function love.update(dt)
     game.mouseWorldX, game.mouseWorldY = game.camera:mousePosition()
 
     game.world:update(dt)
-    map:update(dt)
+    game.map:update(dt)
     dood.M.update(dt, game)
     keyRegistry.update(dt, game)
     mouseRegistry.update(dt, game)
@@ -100,10 +226,13 @@ end
 
 function love.draw()
     local layouts = getLayouts()
+    local map = game.map
     local doodLayouts = layouts.doods
     local screen = layouts.screen
     local camera = game.camera
     local altToggle = game.keyStates.altToggle
+    local fonts = game.fonts
+    local fontHeights = game.fontHeights
 
     local tx = screen.w / (2 * camera.scale) - camera.x
     local ty = screen.h / (2 * camera.scale) - camera.y
@@ -126,12 +255,19 @@ function love.draw()
 
     game.camera:attach()
 
-    table.sort(drawOrder, function (a, b)
-        return a.y < b.y
-    end)
-    for _, d in ipairs(drawOrder) do
-        d.animation[d.dir]:draw(d.animation.image, d.x, d.y, 0, d.scale, d.scale)
+    -- shrines
+    if altToggle > 1 then
+        love.graphics.setFont(fonts.debugWorld)
+        for i, s in ipairs(game.shrines) do
+            love.graphics.print("index: "..i..
+                                "\nx: "..s.x..
+                                "\ny: "..s.y..
+                                "\nstate: "..s.state..
+                                "\nteam: "..s.team
+                                ,s.x + 10, s.y)
+        end
     end
+
 
     -- doods
     for i, d in pairs(game.doods) do
@@ -139,6 +275,7 @@ function love.draw()
         local box = doodLayouts[i].box
         local boxColor = {1, 1, 1,}
 
+        -- set box color
         if d.playerControlled then boxColor = {0.3, 1, 0.3} -- green
         elseif d.selected then boxColor = {0.5, 0.5, 1}     -- blue
         elseif d.attackers then
@@ -153,7 +290,7 @@ function love.draw()
             local shape = d.fixture:getShape()
             local centerX, centerY = d.body:getWorldPoint(shape:getPoint())
 
-            -- selection box
+            -- box
             local pr, pg, pb, pa = love.graphics.getColor()
             love.graphics.setColor(boxColor)
             love.graphics.rectangle("line", box.x, box.y, box.w, box.h)
@@ -163,15 +300,15 @@ function love.draw()
             if altToggle == 3 or altToggle == 2 and d.selected then
                 local rescueTarget = d.rescueTarget and d.rescueTarget.index
                 local attackTarget = d.attackTarget and d.attackTarget.index
-                local attackers = 0
 
-                if d .attackers then
+                local attackerCount = 0
+                if d.attackers then
                     for _, _ in pairs(d.attackers) do
-                        attackers = attackers + 1
+                        attackerCount = attackerCount + 1
                     end
                 end
 
-                love.graphics.setFont(game.fonts.debugWorld)
+                love.graphics.setFont(fonts.debugWorld)
                 love.graphics.print("\nindex: "..d.index..
                                     -- "\nx: "..math.floor(centerX)..
                                     -- "\ny: "..math.floor(centerY)..
@@ -179,7 +316,7 @@ function love.draw()
                                     -- "\ndir: "..d.dir..
                                     -- "\ncolor: "..d.color..
                                     -- "\nselected: "..tostring(d.selected)..
-                                    -- "\nattackers: "..(attackers or "none")..
+                                    -- "\nattackers: "..(attackerCount or "none")..
                                     "\nattack target: "..(attackTarget or "none")..
                                     "\nrescue target: "..(rescueTarget or "none")..
                                     "\nwander timer: "..string.format("%.1f", tostring(d.wanderTimer))..

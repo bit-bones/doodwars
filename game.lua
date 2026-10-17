@@ -18,7 +18,10 @@ local game = {
     keyStates = {},
     layouts = {},
     fonts = {},
+    fontHeights = {},
     doods = {},
+    shrines = {},
+    props = {},
 }
 
 game.camera.x = 215

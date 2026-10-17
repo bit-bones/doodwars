@@ -39,7 +39,7 @@ local keyMap = {
     lshift = {
         down = function (dt, g)
             states.shiftDown = true
-            g.keyPanSpeed = 400
+            g.keyPanSpeed = 800
         end,
 
         released = function (g)

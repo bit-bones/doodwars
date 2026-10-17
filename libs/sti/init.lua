@@ -1153,6 +1153,7 @@ function Map:setFlippedGID(gid)
 		offset     = tile.offset,
 		quad       = tile.quad,
 		properties = tile.properties,
+		objectGroup = tile.objectGroup,
 		terrain    = tile.terrain,
 		animation  = tile.animation,
 		sx         = tile.sx,

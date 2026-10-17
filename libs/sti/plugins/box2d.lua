@@ -82,6 +82,27 @@ return {
 			return vertices
 		end
 
+		local function transformTileVertices(object, instance)
+			if not instance or not instance.layer then
+				return
+			end
+
+			local tile = map.tiles[instance.gid]
+			local cos = math.cos(tile.r or 0)
+			local sin = math.sin(tile.r or 0)
+			local sx = tile.sx or 1
+			local sy = tile.sy or 1
+			local x = instance.x + map.offsetx
+			local y = instance.y + map.offsety
+
+			for _, vertex in ipairs(object.polygon) do
+				local vx = (vertex.x - x) * sx
+				local vy = (vertex.y - y) * sy
+				vertex.x = x + cos * vx - sin * vy
+				vertex.y = y + sin * vx + cos * vy
+			end
+		end
+
 		local function calculateObjectPosition(object, tile)
 			local o = {
 				shape   = object.shape,
@@ -143,12 +164,15 @@ return {
 					vertex.x, vertex.y = utils.rotate_vertex(map, vertex, o.x, o.y, cos, sin, oy)
 				end
 
+				transformTileVertices(o, tile)
+
 				local vertices = getPolygonVertices(o)
 				addObjectToWorld(o.shape, vertices, userdata, tile or object)
 			elseif o.shape == "ellipse" then
 				if not o.polygon then
 					o.polygon = utils.convert_ellipse_to_polygon(o.x, o.y, o.w, o.h)
 				end
+				transformTileVertices(o, tile)
 				local vertices  = getPolygonVertices(o)
 				local triangles = love.math.triangulate(vertices)
 
@@ -167,6 +191,8 @@ return {
 					end
 				end
 
+				transformTileVertices(o, tile)
+
 				local vertices  = getPolygonVertices(o)
 				local triangles = love.math.triangulate(vertices)
 
@@ -174,6 +200,16 @@ return {
 					addObjectToWorld(o.shape, triangle, userdata, tile or object)
 				end
 			elseif o.shape == "polyline" then
+				if tile and tile.layer then
+					local cos = math.cos(math.rad(o.r))
+					local sin = math.sin(math.rad(o.r))
+					for _, vertex in ipairs(o.polygon) do
+						vertex.x = vertex.x + o.x
+						vertex.y = vertex.y + o.y
+						vertex.x, vertex.y = utils.rotate_vertex(map, vertex, o.x, o.y, cos, sin)
+					end
+					transformTileVertices(o, tile)
+				end
 				local vertices = getPolygonVertices(o)
 				addObjectToWorld(o.shape, vertices, userdata, tile or object)
 			end
