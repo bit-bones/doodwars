@@ -21,6 +21,7 @@ local game = {
     fontHeights = {},
     doods = {},
     shrines = {},
+    bases = {},
     props = {},
 }
 

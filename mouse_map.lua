@@ -90,6 +90,7 @@ local mouseMap = {
                         end
                     else
                         dood.M.clearTargets(d)
+                        d.route = nil
                         d.moveTargetX = wx
                         d.moveTargetY = wy
                     end

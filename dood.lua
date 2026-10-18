@@ -97,58 +97,55 @@ function M.getNavigationClearance(color, scale)
 end
 
 function M.moveTo(d)
-    d.body:setLinearDamping(0)
     d.state = "walk"
     d.animation = d.animations.walk
 
-    local bodyX, bodyY = d.body:getPosition()
-    d.route = navigation:shortest_path(bodyX, bodyY, d.moveTargetX, d.moveTargetY)
-    d.routeIndex = 2
-
-    local waypoint = d.route and d.route[d.routeIndex]
-
-    if waypoint and navigation:is_point_inside(waypoint[1], waypoint[2]) then
+    if not d.route or #d.route == 0 then
         local bodyX, bodyY = d.body:getPosition()
-        local difX = waypoint[1] - bodyX
-        local difY = waypoint[2] - bodyY
-        local distance = math.sqrt(difX * difX + difY * difY)
+        d.route = navigation:shortest_path(bodyX, bodyY, d.moveTargetX, d.moveTargetY)
+        if not d.route or #d.route == 0 then
+            d.body:setLinearVelocity(0, 0)
+            return
+        end
+        d.routeIndex = 1
+    end
 
-        if distance < 6 then
-            if d.routeIndex < #d.route then
-                d.routeIndex = d.routeIndex + 1
-            else
-                d.body:setLinearVelocity(0, 0)
-                d.route = nil
-                d.moveTargetX = nil
-                d.moveTargetY = nil
-                d.state = "idle"
-                d.animation = d.animations.idle
-            end
-        else
-            d.body:setLinearVelocity(
-                difX / distance * DEFAULTS.MOVE_SPEED,
-                difY / distance * DEFAULTS.MOVE_SPEED
-            )
-        end
-
-        -- set animation direction
-        if difY > 0 then
-            d.dir = "down"
-        elseif difY < 0 then
-            d.dir = "up"
-        end
-        if difX > 0 then
-            d.dir = "right"
-        elseif difX < 0 then
-            d.dir = "left"
-        end
-    else
+    local waypoint = d.route[d.routeIndex]
+    if not waypoint then
         d.body:setLinearVelocity(0, 0)
         d.route = nil
-        d.moveTargetX = nil
-        d.moveTargetY = nil
-        d.state = "idle"
-        d.animation = d.animations.idle
+        return
+    end
+
+    local bodyX, bodyY = d.body:getPosition()
+    local difX = waypoint[1] - bodyX
+    local difY = waypoint[2] - bodyY
+    local distance = math.sqrt(difX * difX + difY * difY)
+
+    if distance < 8 then
+        d.routeIndex = d.routeIndex + 1
+        if d.routeIndex > #d.route then
+            d.body:setLinearVelocity(0, 0)
+            d.route = nil
+            d.moveTargetX = nil
+            d.moveTargetY = nil
+            d.state = "idle"
+            d.animation = d.animations.idle
+            return
+        end
+        return
+    end
+    d.body:setLinearVelocity(difX / distance * DEFAULTS.MOVE_SPEED,difY / distance * DEFAULTS.MOVE_SPEED)
+
+    if difY > 0 then
+        d.dir = "down"
+    elseif difY < 0 then
+        d.dir = "up"
+    end
+    if difX > 0 then
+        d.dir = "right"
+    elseif difX < 0 then
+        d.dir = "left"
     end
 end
 
@@ -190,21 +187,82 @@ end
 
 function M.healTarget(d, dt, target)
     local rescueRate = d.rescueRate or DEFAULTS.RESCUE_RATE
+
+    if target.joint then
+        target.joint:destroy()
+        target.joint = nil
+    end
+
     target.hp = target.hp + rescueRate * dt
+
     if target.hp >= target.maxHp then
         target.hp = target.maxHp
         target.state = "idle"
         target.animation = target.animations.idle
         target.scanTimer = 0
-        if target.joint then
-            target.joint:destroy()
-            target.joint = nil
-        end
         d.rescueTarget = nil
         d.state = "idle"
         d.animation = d.animations.idle
         d.scanTimer = 0
     end
+end
+
+function M.shrineScan(d, g)
+    local friendlyShrineDistances = {}
+    local neutralShrineDistances = {}
+    local enemyShrineDistances = {}
+
+    for i, s in ipairs(g.shrines) do
+        local dis = love.physics.getDistance(d.fixture, s.fixture)
+
+        if s.team == d.color then
+            friendlyShrineDistances[i] = dis
+        elseif s.team == "neutral" then
+            neutralShrineDistances[i] = dis
+        else
+            enemyShrineDistances[i] = dis
+        end
+    end
+
+    local closestFriendlyShrineIndex, closestFriendlyShrineDis = M.getSmallestValueIndex(friendlyShrineDistances)
+    local closestFriendlyShrineX, closestFriendlyShrineY
+    local closestNeutralShrineIndex, closestNeutralShrineDis = M.getSmallestValueIndex(neutralShrineDistances)
+    local closestNeutralShrineX, closestNeutralShrineY
+    local closestEnemyShrineIndex, closestEnemyShrineDis = M.getSmallestValueIndex(enemyShrineDistances)
+    local closestEnemyShrineX, closestEnemyShrineY
+
+    if closestFriendlyShrineIndex then
+        closestFriendlyShrineX, closestFriendlyShrineY = g.shrines[closestFriendlyShrineIndex].body:getPosition()
+    end
+    if closestNeutralShrineIndex then
+        closestNeutralShrineX, closestNeutralShrineY = g.shrines[closestNeutralShrineIndex].body:getPosition()
+    end
+    if closestEnemyShrineIndex then
+        closestEnemyShrineX, closestEnemyShrineY = g.shrines[closestEnemyShrineIndex].body:getPosition()
+    end
+
+    return {
+        closestFriendlyShrine = {
+            index = closestFriendlyShrineIndex,
+            dis = closestFriendlyShrineDis,
+            x = closestFriendlyShrineX,
+            y = closestFriendlyShrineY + 50,
+        },
+
+        closestNeutralShrine = {
+            index = closestNeutralShrineIndex,
+            dis = closestNeutralShrineDis,
+            x = closestNeutralShrineX,
+            y = closestNeutralShrineY,
+        },
+
+        closestEnemyShrine = {
+            index = closestEnemyShrineIndex,
+            dis = closestEnemyShrineDis,
+            x = closestEnemyShrineX,
+            y = closestEnemyShrineY,
+        },
+    }
 end
 
 function M.doodScan(d, g)
@@ -229,13 +287,10 @@ function M.doodScan(d, g)
     end
 
     local closestEnemyIndex, closestEnemyDis = M.getSmallestValueIndex(enemyDistances)
-
     if closestEnemyIndex then
         closestEnemyX, closestEnemyY = g.doods[closestEnemyIndex].body:getPosition()
     end
-
     local closestDownFriendlyIndex, closestDownFriendlyDis = M.getSmallestValueIndex(downFriendlyDistances)
-
 
     return {
         closestEnemy = {
@@ -342,8 +397,6 @@ function M.update(dt, g)
                     d.state = "rescue"
                     d.animation = d.animations.idle
                     d.body:setLinearVelocity(0, 0)
-                    d.moveTargetX, d.moveTargetY = nil, nil
-                    d.route, d.routeIndex = nil, nil
                     if d.state == "rescue" then
                         local scan = M.doodScan(d.rescueTarget, g)
                         local closestEnemy = scan.closestEnemy
@@ -351,12 +404,12 @@ function M.update(dt, g)
                         if d.priority == "Default" then
                             if closestEnemy.index then
                                 M.setAttackTarget(d, g, closestEnemy.index)
-                                d.rescueTarget = nil
+                                if d.rescueTarget then d.rescueTarget = nil end
                             else
                                 M.healTarget(d, dt, d.rescueTarget)
                             end
                         elseif d.priority == "Medic" then
-                            if not closestEnemy.index or closestEnemy.dis > DEFAULTS.SAFE_RESCUE_DISTANCE then
+                            if not closestEnemy.index or closestEnemy.dis > DEFAULTS.SAFE_RESCUE_DISTANCE or d.targetRescueShrine and d.rescueTarget.joint then
                                 M.healTarget(d, dt, d.rescueTarget)
 
                             elseif not d.rescueTarget.joint then
@@ -365,16 +418,12 @@ function M.update(dt, g)
                                 d.rescueTarget.joint = love.physics.newDistanceJoint(d.body, d.rescueTarget.body, bodyX, bodyY, targetBodyX, targetbodyY, false)
 
                                 if d.rescueTarget.joint then
-                                    if closestEnemy.x < bodyX then
-                                        d.moveTargetX = closestEnemy.x + DEFAULTS.SAFE_RESCUE_DISTANCE
-                                    else
-                                        d.moveTargetX = closestEnemy.x - DEFAULTS.SAFE_RESCUE_DISTANCE
-                                    end
-
-                                    if closestEnemy.y < bodyY then
-                                        d.moveTargetY = closestEnemy.y + DEFAULTS.SAFE_RESCUE_DISTANCE
-                                    else
-                                        d.moveTargetY = closestEnemy.y - DEFAULTS.SAFE_RESCUE_DISTANCE
+                                    local shrineScan = M.shrineScan(d, g)
+                                    local closestFriendlyShrine = shrineScan.closestFriendlyShrine
+                                    if closestFriendlyShrine then
+                                        d.rescueTarget.body:setLinearDamping(2)
+                                        d.moveTargetX, d.moveTargetY = closestFriendlyShrine.x, closestFriendlyShrine.y
+                                        d.targetRescueShrine = g.shrines[closestFriendlyShrine.index]
                                     end
                                 end
                             end
@@ -389,11 +438,21 @@ function M.update(dt, g)
             end
 
             -- move
-            if d.moveTargetX and d.moveTargetY and navigation:is_point_inside(d.moveTargetX, d.moveTargetY) then
+            if d.moveTargetX and d.moveTargetY then
+                -- clamp move target inside map boundaries
+                if d.moveTargetX < 0 or d.moveTargetX > g.boundary.rightX or d.moveTargetY < 0 or d.moveTargetY > g.boundary.bottomY then
+                    if d.moveTargetX > g.boundary.rightX then
+                        d.moveTargetX = g.boundary.rightX - d.collisionRadius * 2
+                    elseif d.moveTargetX < 0 then
+                        d.moveTargetX = 0 + d.collisionRadius * 2
+                    end
+                    if d.moveTargetY > g.boundary.bottomY then
+                        d.moveTargetY = g.boundary.bottomY - d.collisionRadius * 2
+                    elseif d.moveTargetY < 0 then
+                        d.moveTargetY = 0 + d.collisionRadius * 2
+                    end
+                end
                 M.moveTo(d)
-            -- else
-            --     d.body:setLinearVelocity(0, 0)
-            --     -- d.animation = d.animations.idle
             end
 
             -- idle scanning
@@ -447,7 +506,7 @@ function M.update(dt, g)
                         local ry = love.math.random(bodyY - 30, bodyY + 30)
                         d.moveTargetX = rx
                         d.moveTargetY = ry
-                        d.wanderTimer = love.math.random(4,7)
+                        d.wanderTimer = love.math.random(4,8)
                     end
                 end
             end
@@ -506,6 +565,7 @@ function M.newDood(x, y, color, g)
         y = y,
         playerControlled = false,
         selected = false,
+        pulling = false,
         animations = animations,
         animation = animations.idle,
         stopCheckTimer = 0,

@@ -19,16 +19,28 @@ function love.load()
     drawOrder = {}
 
     love.physics.setMeter(32)
-    game.world = love.physics.newWorld(0,0,true)
-
+    game.world = love.physics.newWorld(0, 0, true)
+    
     love.graphics.setDefaultFilter("nearest", "nearest")
 
     game.map = sti("maps/map1shrinetest.lua", {"box2d"})
     local map = game.map
     map:box2d_init(game.world)
 
-    local propLayer = map.layers["depth-objects"]
+    local body = love.physics.newBody(game.world, 0, 0, "static")
+    body:setAwake(false)
+    local rightX = 0 + map.width * map.tilewidth
+    local bottomY = 0 + map.height * map.tileheight
+    game.boundary = {
+        rightX = rightX,
+        bottomY = bottomY,
+        top = love.physics.newFixture(body, love.physics.newEdgeShape(0, 0, rightX, 0)),
+        bottom = love.physics.newFixture(body, love.physics.newEdgeShape(0, bottomY, rightX, bottomY)),
+        left = love.physics.newFixture(body, love.physics.newEdgeShape(0, 0, 0, bottomY)),
+        right = love.physics.newFixture(body, love.physics.newEdgeShape(rightX, 0, rightX, bottomY)),
+    }
 
+    local propLayer = map.layers["depth-objects"]
     for _, prop in ipairs(propLayer.objects) do
         if prop.type == "trees" then
             local x = propLayer.x + prop.x
@@ -46,25 +58,43 @@ function love.load()
     end
 
     local markerLayer = map.layers["objective-markers"]
-
-    for _, object in ipairs(markerLayer.objects) do
+    for i, object in ipairs(markerLayer.objects) do
         if object.type == "shrine" then
             local x = markerLayer.x + object.x
             local y = markerLayer.y + object.y
 
+            local body = love.physics.newBody(game.world, x, y, "static")
+            body:setAwake(false)
+            body:setActive(false)
+
+            local shape = love.physics.newCircleShape(0, 0, 50)
+            local fixture = love.physics.newFixture(body, shape, 0)
+
             table.insert(game.shrines, {
                 x = x,
                 y = y,
+                index = i,
                 tileX = math.floor(x / map.tilewidth) + 1,
                 tileY = math.floor(y / map.tileheight) + 1,
                 state = object.properties.state or "normal",
                 team = object.properties.color or "neutral",
+                body = body,
+                shape = shape,
+                fixture = fixture,
+            })
+
+            table.insert(game.bases, {
+                x = x,
+                y = y,
+                index = i,
+                tileX = math.floor(x / map.tilewidth) + 1,
+                tileY = math.floor(y / map.tileheight) + 1,
             })
         end
     end
 
     local function drawProp(layer, prop)
-        for row = math.max(1, prop.tileY - 3),
+        for row = math.max(1, prop.tileY - 4),
                 math.min(layer.height, prop.tileY + 2) do
             for column = math.max(1, prop.tileX - 2),
                         math.min(layer.width, prop.tileX + 2) do
@@ -93,7 +123,7 @@ function love.load()
         for _, prop in ipairs(game.props) do
             local currentProp = prop
             items[#items + 1] = {
-                sortY = currentProp.y,
+                sortY = currentProp.y + 20,
                 draw = function()
                     love.graphics.setColor(1, 1, 1, 1)
                     drawProp(map.layers["trees"], currentProp)
@@ -103,11 +133,24 @@ function love.load()
 
         for _, s in ipairs(game.shrines) do
             local currentShrine = s
+            local sortY = currentShrine.y + 30
             items[#items + 1] = {
-                sortY = currentShrine.y + 3000,
+                sortY = sortY,
                 draw = function()
                     love.graphics.setColor(1, 1, 1, 1)
                     shrineRegistry.drawShrine(currentShrine, game)
+                end,
+            }
+        end
+
+        for _, b in ipairs(game.bases) do
+            local currentBase = b
+            local sortY = currentBase.y - 20
+            items[#items + 1] = {
+                sortY = sortY,
+                draw = function()
+                    love.graphics.setColor(1, 1, 1, 1)
+                    shrineRegistry.drawBase(currentBase, game)
                 end,
             }
         end
@@ -259,6 +302,7 @@ function love.draw()
     if altToggle > 1 then
         love.graphics.setFont(fonts.debugWorld)
         for i, s in ipairs(game.shrines) do
+            love.graphics.circle("line", s.x, s.y, s.shape:getRadius())
             love.graphics.print("index: "..i..
                                 "\nx: "..s.x..
                                 "\ny: "..s.y..
@@ -288,7 +332,7 @@ function love.draw()
 
         if mouseRegistry.mouseHover(game.mouseWorldX, game.mouseWorldY, box) or altToggle > 0 then
             local shape = d.fixture:getShape()
-            local centerX, centerY = d.body:getWorldPoint(shape:getPoint())
+            local bodyX, bodyY = d.body:getWorldPoint(shape:getPoint())
 
             -- box
             local pr, pg, pb, pa = love.graphics.getColor()
@@ -308,15 +352,19 @@ function love.draw()
                     end
                 end
 
+                if d.moveTargetX and d.moveTargetY then
+                    love.graphics.circle("fill", d.moveTargetX, d.moveTargetY, 10)
+                end
+
                 love.graphics.setFont(fonts.debugWorld)
                 love.graphics.print("\nindex: "..d.index..
-                                    -- "\nx: "..math.floor(centerX)..
-                                    -- "\ny: "..math.floor(centerY)..
+                                    "\nx: "..math.floor(bodyX)..
+                                    "\ny: "..math.floor(bodyY)..
                                     "\nstate: "..d.state..
                                     -- "\ndir: "..d.dir..
                                     -- "\ncolor: "..d.color..
-                                    -- "\nselected: "..tostring(d.selected)..
-                                    -- "\nattackers: "..(attackerCount or "none")..
+                                    "\nselected: "..tostring(d.selected)..
+                                    "\nattackers: "..(attackerCount or "none")..
                                     "\nattack target: "..(attackTarget or "none")..
                                     "\nrescue target: "..(rescueTarget or "none")..
                                     "\nwander timer: "..string.format("%.1f", tostring(d.wanderTimer))..
@@ -330,14 +378,14 @@ function love.draw()
             end
 
             if altToggle >= 4 then
-                love.graphics.circle("line", centerX, centerY, shape:getRadius())
+                love.graphics.circle("line", bodyX, bodyY, shape:getRadius())
             end
         end
     end
 
     -- navmesh
     if altToggle >= 4 then
-        local oldR, oldG, oldB, oldA = love.graphics.getColor()
+        local pr, pg, pb, pa = love.graphics.getColor()
         for _, polyMap in ipairs(navmesh) do
             for _, polygon in ipairs(polyMap) do
                 local vertices = {}
@@ -356,7 +404,7 @@ function love.draw()
                 end
             end
         end
-        love.graphics.setColor(oldR, oldG, oldB, oldA)
+        love.graphics.setColor(pr, pg, pb, pa)
     end
 
    game.camera:detach()
@@ -397,3 +445,5 @@ function love.wheelmoved(x, y)
         game.camera:zoom(1 - game.zoomSpeed)
     end
 end
+
+return game

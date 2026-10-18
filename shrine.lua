@@ -1,3 +1,19 @@
+local bodyColors = {
+    neutral = {1, 1, 1, 1},
+    blue = {0.6, 0.75, 1, 1},
+    red = {1, 0.65, 0.6, 1},
+    green = {0.6, 1, 0.5, 1},
+    yellow = {1, 0.85, 0.2, 1},
+}
+
+local symbolColors = {
+    neutral = {1, 1, 1, 0},
+    blue = {0.65, 0.8, 1, 1},
+    red = {1, 0, 0, 1},
+    green = {0.3, 1, 0.5, 1},
+    yellow = {0.9, 0.8, 0.1, 1},
+}
+
 
 local M = {}
 
@@ -27,8 +43,6 @@ local function drawTilesNearShrine(layer, shrine, tint, map)
 end
 
 function M.drawShrine(shrine, g)
-    local baseLayer = g.map.layers["bases"]
-
     local bodyLayers = {
         broken = g.map.layers["shrines.broken"],
         normal = g.map.layers["shrines.normal"],
@@ -41,30 +55,20 @@ function M.drawShrine(shrine, g)
         upgraded = g.map.layers["shrines.upgraded-symbols"],
     }
 
-    local bodyColors = {
-        neutral = {1, 1, 1, 1},
-        blue = {0.6, 0.75, 1, 1},
-        red = {1, 0.65, 0.6, 1},
-        green = {0.6, 1, 0.5, 1},
-        yellow = {1, 0.85, 0.2, 1},
-    }
-
-    local symbolColors = {
-        neutral = {1, 1, 1, 0},
-        blue = {0.65, 0.8, 1, 1},
-        red = {1, 0, 0, 1},
-        green = {0.3, 1, 0.5, 1},
-        yellow = {0.9, 0.8, 0.1, 1},
-    }
-
     local bodyLayer = bodyLayers[shrine.state] or bodyLayers.normal
     local symbolLayer = symbolLayers[shrine.state] or symbolLayers.normal
     local bodyTint = bodyColors[shrine.team] or bodyColors.neutral
     local symbolTint = symbolColors[shrine.team] or symbolColors.neutral
 
-    drawTilesNearShrine(baseLayer, shrine, bodyTint, g.map)
-    drawTilesNearShrine(bodyLayer, shrine, {1,1,1,1}, g.map)
+    drawTilesNearShrine(bodyLayer, shrine, {1, 1, 1, 1,}, g.map)
     drawTilesNearShrine(symbolLayer, shrine, symbolTint, g.map)
+end
+
+function M.drawBase(base, g)
+    local baseLayer = g.map.layers["bases"]
+    local bodyTint = bodyColors[g.shrines[base.index].team]
+
+    drawTilesNearShrine(baseLayer, base, bodyTint, g.map)
 end
 
 return M
