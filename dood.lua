@@ -197,6 +197,10 @@ function M.healTarget(d, dt, target)
         if target.joint then
             target.joint:destroy()
             target.joint = nil
+            d.dragging = false
+        end
+        if d.targetRescueShrine then
+            d.targetRescueShrine = nil
         end
         d.rescueTarget = nil
         d.state = "idle"
@@ -305,9 +309,14 @@ function M.doodScan(d, g)
     }
 end
 
-local function isInside(d, s)
+local function isInside(d, f)
     local bodyX, bodyY = d.body:getPosition()
-    
+    local distance = love.physics.getDistance(d.fixture, f)
+    local shape = f:getShape()
+    local radius = shape:getRadius()
+    if distance <= radius then
+        return true
+    end
 end
 
 function M.update(dt, g)
@@ -394,15 +403,16 @@ function M.update(dt, g)
 
             -- rescue
             elseif d.rescueTarget then
-                if d.dragging and isInside(d, d.targetRescueShrine.shape) then
+                if d.dragging and isInside(d, d.targetRescueShrine.fixture) then
+                    d.dragging = false
+                end
 
-                
                 local distance = love.physics.getDistance(d.fixture, d.rescueTarget.fixture)
 
                 if distance <= d.collisionRadius * 2 then
                     d.state = "rescue"
                     d.animation = d.animations.idle
-                    -- d.body:setLinearVelocity(0, 0)
+                    d.body:setLinearVelocity(0, 0)
                     if d.state == "rescue" then
                         local scan = M.doodScan(d.rescueTarget, g)
                         local closestEnemy = scan.closestEnemy
@@ -415,11 +425,11 @@ function M.update(dt, g)
                                 M.healTarget(d, dt, d.rescueTarget)
                             end
                         elseif d.priority == "Medic" then
-                            if not closestEnemy.index or closestEnemy.dis > DEFAULTS.SAFE_RESCUE_DISTANCE or d.targetRescueShrine and d.rescueTarget.joint then
+                            if (not closestEnemy.index or closestEnemy.dis > DEFAULTS.SAFE_RESCUE_DISTANCE) or (d.targetRescueShrine and d.dragging and isInside(d, d.targetRescueShrine.fixture)) then
                                 M.healTarget(d, dt, d.rescueTarget)
 
-                            elseif not d.rescueTarget.joint then
-                                -- local bodyX, bodyY = d.body:getPosition()
+                            elseif not d.rescueTarget.joint and not d.dragging then
+                                local bodyX, bodyY = d.body:getPosition()
                                 local targetBodyX, targetbodyY = d.rescueTarget.body:getPosition()
                                 d.rescueTarget.joint = love.physics.newDistanceJoint(d.body, d.rescueTarget.body, bodyX, bodyY, targetBodyX, targetbodyY, false)
                                 d.dragging = true
