@@ -344,6 +344,7 @@ function love.draw()
             if altToggle == 3 or altToggle == 2 and d.selected then
                 local rescueTarget = d.rescueTarget and d.rescueTarget.index
                 local attackTarget = d.attackTarget and d.attackTarget.index
+                local puller = d.puller and d.puller.index
 
                 local attackerCount = 0
                 if d.attackers then
@@ -366,7 +367,7 @@ function love.draw()
                                     -- "\nselected: "..tostring(d.selected)..
                                     -- "\nattackers: "..(attackerCount or "none")..
                                     -- "\nattack target: "..(attackTarget or "none")..
-                                    "\npuller: "..(d.puller.index or "none")..
+                                    "\npuller: "..(puller or "none")..
                                     "\nrescue target: "..(rescueTarget or "none")..
                                     "\nwander timer: "..string.format("%.1f", tostring(d.wanderTimer))..
                                     "\nscan timer: "..string.format("%.1f", tostring(d.scanTimer))..

@@ -42,13 +42,13 @@ local DEFAULTS = {
     SCALE = 2,
     ATTACK_TIME = 2.0,
     HURT_TIME = 0.3,
-    SCAN_RADIUS = 400,
+    SCAN_RADIUS = 800,
     SCAN_TIME = 2.0,
     DAMAGE = 10,
     HP = 100,
     MOVE_SPEED = 75,
     RESCUE_RATE = 5,
-    SAFE_RESCUE_DISTANCE = 500,
+    SAFE_RESCUE_DISTANCE = 800, -- temporary
 }
 
 local function pauseDeathAtEnd(animation)
@@ -96,8 +96,21 @@ function M.getNavigationClearance(color, scale)
     return spriteW * (scale or DEFAULTS.SCALE) * COLLISION_RADIUS_RATIO + NAVIGATION_MARGIN
 end
 
+local function stopMove(d)
+    d.body:setLinearVelocity(0, 0)
+    d.route = nil
+    d.moveTargetX = nil
+    d.moveTargetY = nil
+    d.state = "idle"
+    d.animation = d.animations.idle
+    d.scanTimer = 0
+end
+
 function M.moveTo(d)
-    d.state = "walk"
+    if d.state ~= "pulling" then
+        d.state = "walk"
+    end
+
     d.animation = d.animations.walk
 
     if not d.route or #d.route == 0 then
@@ -117,6 +130,21 @@ function M.moveTo(d)
         return
     end
 
+    if d.targetRescueShrine and d.state == "pulling" then
+        local shrineRadius = d.targetRescueShrine.shape:getRadius()
+        local rescueShrineDis = love.physics.getDistance(d.fixture, d.targetRescueShrine.fixture)
+
+        if rescueShrineDis <= shrineRadius then
+            if d.rescueTarget.joint and d.rescueTarget.puller == d then
+                d.rescueTarget.joint:destroy()
+                d.rescueTarget.joint = nil
+                d.rescueTarget.puller = nil
+            end
+            stopMove(d)
+            return
+        end
+    end
+
     local bodyX, bodyY = d.body:getPosition()
     local difX = waypoint[1] - bodyX
     local difY = waypoint[2] - bodyY
@@ -125,16 +153,11 @@ function M.moveTo(d)
     if distance < 8 then
         d.routeIndex = d.routeIndex + 1
         if d.routeIndex > #d.route then
-            d.body:setLinearVelocity(0, 0)
-            d.route = nil
-            d.moveTargetX = nil
-            d.moveTargetY = nil
-            d.state = "idle"
-            d.animation = d.animations.idle
-            return
+            stopMove(d)
         end
         return
     end
+
     d.body:setLinearVelocity(difX / distance * DEFAULTS.MOVE_SPEED,difY / distance * DEFAULTS.MOVE_SPEED)
 
     if difY > 0 then
@@ -172,6 +195,11 @@ function M.clearTargets(d)
     end
 
     if d.rescueTarget then
+        if d.rescueTarget.joint then
+            d.rescueTarget.joint:destroy()
+            d.rescueTarget.joint = nil
+            d.rescueTarget.puller = nil
+        end
         d.rescueTarget = nil
     end
 end
@@ -194,6 +222,7 @@ function M.healTarget(d, dt, target)
         target.state = "idle"
         target.animation = target.animations.idle
         target.scanTimer = 0
+
         if target.joint and target.puller == d then
             target.joint:destroy()
             target.joint = nil
@@ -309,16 +338,6 @@ function M.doodScan(d, g)
     }
 end
 
-local function isInside(d, f)
-    local bodyX, bodyY = d.body:getPosition()
-    local distance = love.physics.getDistance(d.fixture, f)
-    local shape = f:getShape()
-    local radius = shape:getRadius()
-    if distance <= radius then
-        return true
-    end
-end
-
 function M.update(dt, g)
     for i, d in ipairs(g.doods) do
         -- hurt timer
@@ -402,14 +421,17 @@ function M.update(dt, g)
                 end
 
             -- rescue
-            elseif d.rescueTarget then
+            elseif d.rescueTarget and d.state ~= "pulling" then
                 local distance = love.physics.getDistance(d.fixture, d.rescueTarget.fixture)
 
                 if distance <= d.collisionRadius * 2 then
                     d.state = "rescue"
                     d.animation = d.animations.idle
                     d.body:setLinearVelocity(0, 0)
+
                     if d.state == "rescue" then
+                        local shrineScan = M.shrineScan(d, g)
+                        local closestFriendlyShrine = shrineScan.closestFriendlyShrine
                         local scan = M.doodScan(d.rescueTarget, g)
                         local closestEnemy = scan.closestEnemy
 
@@ -421,19 +443,20 @@ function M.update(dt, g)
                                 M.healTarget(d, dt, d.rescueTarget)
                             end
                         elseif d.priority == "Medic" then
-                            if (not closestEnemy.index or closestEnemy.dis > DEFAULTS.SAFE_RESCUE_DISTANCE) or (d.targetRescueShrine and d.rescueTarget.puller == d and isInside(d, d.targetRescueShrine.fixture)) then
+                            local closestFriendlyShrineDis = closestFriendlyShrine.dis
+                            local closestFriendlyShrineRadius = g.shrines[closestFriendlyShrine.index].shape:getRadius()
+
+                            if not closestEnemy.index or closestEnemy.dis > DEFAULTS.SAFE_RESCUE_DISTANCE or closestFriendlyShrineDis <= closestFriendlyShrineRadius then
                                 M.healTarget(d, dt, d.rescueTarget)
 
                             elseif not d.rescueTarget.joint and not d.rescueTarget.puller then
                                 local bodyX, bodyY = d.body:getPosition()
                                 local targetBodyX, targetbodyY = d.rescueTarget.body:getPosition()
-                                local rescueJoint = love.physics.newDistanceJoint(d.body, d.rescueTarget.body, bodyX, bodyY, targetBodyX, targetbodyY, false)
-                                d.rescueTarget.joint = rescueJoint
+                                d.rescueTarget.joint = love.physics.newDistanceJoint(d.body, d.rescueTarget.body, bodyX, bodyY, targetBodyX, targetbodyY, false)
                                 d.rescueTarget.puller = d
 
                                 if d.rescueTarget.joint and d.rescueTarget.puller == d then
-                                    local shrineScan = M.shrineScan(d, g)
-                                    local closestFriendlyShrine = shrineScan.closestFriendlyShrine
+                                    d.state = "pulling"
                                     if closestFriendlyShrine then
                                         -- d.rescueTarget.body:setLinearDamping(2)
                                         d.moveTargetX, d.moveTargetY = closestFriendlyShrine.x, closestFriendlyShrine.y
@@ -475,6 +498,7 @@ function M.update(dt, g)
                 if d.rescueTarget and d.rescueTarget.joint then
                     d.rescueTarget.joint:destroy()
                     d.rescueTarget.joint = nil
+                    d.puller = nil
                 end
 
                 d.scanTimer = d.scanTimer - dt
@@ -482,7 +506,11 @@ function M.update(dt, g)
                     d.scanTimer = DEFAULTS.SCAN_TIME
                     local scan = M.doodScan(d, g)
                     local closestEnemy = scan.closestEnemy
-                    local closestDownFriendly = scan.closestDownFriendly
+                    local closestDownFriendly = {
+                        dis = scan.closestDownFriendly and scan.closestDownFriendly.dis,
+                        index = scan.closestDownFriendly and scan.closestDownFriendly.index,
+                        dood = g.doods[scan.closestDownFriendly.index],
+                    }
 
                     if d.priority == "Default" then
                         if closestEnemy.index then
@@ -491,7 +519,7 @@ function M.update(dt, g)
                             d.rescueTarget = g.doods[closestDownFriendly.index]
                         end
                     elseif d.priority == "Medic" then
-                        if closestDownFriendly.index and not d.attackers then
+                        if closestDownFriendly.index and not d.attackers and not closestDownFriendly.dood.joint then
                             d.rescueTarget = g.doods[closestDownFriendly.index]
                         elseif closestEnemy.index then
                             M.setAttackTarget(d, g, closestEnemy.index)
