@@ -194,10 +194,10 @@ function M.healTarget(d, dt, target)
         target.state = "idle"
         target.animation = target.animations.idle
         target.scanTimer = 0
-        if target.joint then
+        if target.joint and target.puller == d then
             target.joint:destroy()
             target.joint = nil
-            d.dragging = false
+            target.puller = nil
         end
         if d.targetRescueShrine then
             d.targetRescueShrine = nil
@@ -403,10 +403,6 @@ function M.update(dt, g)
 
             -- rescue
             elseif d.rescueTarget then
-                if d.dragging and isInside(d, d.targetRescueShrine.fixture) then
-                    d.dragging = false
-                end
-
                 local distance = love.physics.getDistance(d.fixture, d.rescueTarget.fixture)
 
                 if distance <= d.collisionRadius * 2 then
@@ -425,16 +421,17 @@ function M.update(dt, g)
                                 M.healTarget(d, dt, d.rescueTarget)
                             end
                         elseif d.priority == "Medic" then
-                            if (not closestEnemy.index or closestEnemy.dis > DEFAULTS.SAFE_RESCUE_DISTANCE) or (d.targetRescueShrine and d.dragging and isInside(d, d.targetRescueShrine.fixture)) then
+                            if (not closestEnemy.index or closestEnemy.dis > DEFAULTS.SAFE_RESCUE_DISTANCE) or (d.targetRescueShrine and d.rescueTarget.puller == d and isInside(d, d.targetRescueShrine.fixture)) then
                                 M.healTarget(d, dt, d.rescueTarget)
 
-                            elseif not d.rescueTarget.joint and not d.dragging then
+                            elseif not d.rescueTarget.joint and not d.rescueTarget.puller then
                                 local bodyX, bodyY = d.body:getPosition()
                                 local targetBodyX, targetbodyY = d.rescueTarget.body:getPosition()
-                                d.rescueTarget.joint = love.physics.newDistanceJoint(d.body, d.rescueTarget.body, bodyX, bodyY, targetBodyX, targetbodyY, false)
-                                d.dragging = true
+                                local rescueJoint = love.physics.newDistanceJoint(d.body, d.rescueTarget.body, bodyX, bodyY, targetBodyX, targetbodyY, false)
+                                d.rescueTarget.joint = rescueJoint
+                                d.rescueTarget.puller = d
 
-                                if d.rescueTarget.joint and d.dragging then
+                                if d.rescueTarget.joint and d.rescueTarget.puller == d then
                                     local shrineScan = M.shrineScan(d, g)
                                     local closestFriendlyShrine = shrineScan.closestFriendlyShrine
                                     if closestFriendlyShrine then

@@ -366,7 +366,7 @@ function love.draw()
                                     -- "\nselected: "..tostring(d.selected)..
                                     -- "\nattackers: "..(attackerCount or "none")..
                                     -- "\nattack target: "..(attackTarget or "none")..
-                                    "\ndragging: "..tostring(d.dragging)..
+                                    "\npuller: "..(d.puller.index or "none")..
                                     "\nrescue target: "..(rescueTarget or "none")..
                                     "\nwander timer: "..string.format("%.1f", tostring(d.wanderTimer))..
                                     "\nscan timer: "..string.format("%.1f", tostring(d.scanTimer))..
