@@ -363,14 +363,15 @@ function love.draw()
                                     "\nstate: "..d.state..
                                     -- "\ndir: "..d.dir..
                                     -- "\ncolor: "..d.color..
-                                    "\nselected: "..tostring(d.selected)..
-                                    "\nattackers: "..(attackerCount or "none")..
-                                    "\nattack target: "..(attackTarget or "none")..
+                                    -- "\nselected: "..tostring(d.selected)..
+                                    -- "\nattackers: "..(attackerCount or "none")..
+                                    -- "\nattack target: "..(attackTarget or "none")..
+                                    "\ndragging: "..tostring(d.dragging)..
                                     "\nrescue target: "..(rescueTarget or "none")..
                                     "\nwander timer: "..string.format("%.1f", tostring(d.wanderTimer))..
                                     "\nscan timer: "..string.format("%.1f", tostring(d.scanTimer))..
-                                    "\nhurt timer: "..string.format("%.1f", tostring(d.hurtTimer))..
-                                    "\nattack timer: "..string.format("%.1f", tostring(d.attackTimer))..
+                                    -- "\nhurt timer: "..string.format("%.1f", tostring(d.hurtTimer))..
+                                    -- "\nattack timer: "..string.format("%.1f", tostring(d.attackTimer))..
                                     "\nhealth: "..math.floor(d.hp)
                                     -- "\ncontrolled: "..tostring(d.playerControlled)..
                                     ,box.x + box.w, box.y + box.h)

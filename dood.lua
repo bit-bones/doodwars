@@ -187,12 +187,6 @@ end
 
 function M.healTarget(d, dt, target)
     local rescueRate = d.rescueRate or DEFAULTS.RESCUE_RATE
-
-    if target.joint then
-        target.joint:destroy()
-        target.joint = nil
-    end
-
     target.hp = target.hp + rescueRate * dt
 
     if target.hp >= target.maxHp then
@@ -200,6 +194,10 @@ function M.healTarget(d, dt, target)
         target.state = "idle"
         target.animation = target.animations.idle
         target.scanTimer = 0
+        if target.joint then
+            target.joint:destroy()
+            target.joint = nil
+        end
         d.rescueTarget = nil
         d.state = "idle"
         d.animation = d.animations.idle
@@ -307,6 +305,11 @@ function M.doodScan(d, g)
     }
 end
 
+local function isInside(d, s)
+    local bodyX, bodyY = d.body:getPosition()
+    
+end
+
 function M.update(dt, g)
     for i, d in ipairs(g.doods) do
         -- hurt timer
@@ -391,12 +394,15 @@ function M.update(dt, g)
 
             -- rescue
             elseif d.rescueTarget then
+                if d.dragging and isInside(d, d.targetRescueShrine.shape) then
+
+                
                 local distance = love.physics.getDistance(d.fixture, d.rescueTarget.fixture)
 
                 if distance <= d.collisionRadius * 2 then
                     d.state = "rescue"
                     d.animation = d.animations.idle
-                    d.body:setLinearVelocity(0, 0)
+                    -- d.body:setLinearVelocity(0, 0)
                     if d.state == "rescue" then
                         local scan = M.doodScan(d.rescueTarget, g)
                         local closestEnemy = scan.closestEnemy
@@ -413,15 +419,16 @@ function M.update(dt, g)
                                 M.healTarget(d, dt, d.rescueTarget)
 
                             elseif not d.rescueTarget.joint then
-                                local bodyX, bodyY = d.body:getPosition()
+                                -- local bodyX, bodyY = d.body:getPosition()
                                 local targetBodyX, targetbodyY = d.rescueTarget.body:getPosition()
                                 d.rescueTarget.joint = love.physics.newDistanceJoint(d.body, d.rescueTarget.body, bodyX, bodyY, targetBodyX, targetbodyY, false)
+                                d.dragging = true
 
-                                if d.rescueTarget.joint then
+                                if d.rescueTarget.joint and d.dragging then
                                     local shrineScan = M.shrineScan(d, g)
                                     local closestFriendlyShrine = shrineScan.closestFriendlyShrine
                                     if closestFriendlyShrine then
-                                        d.rescueTarget.body:setLinearDamping(2)
+                                        -- d.rescueTarget.body:setLinearDamping(2)
                                         d.moveTargetX, d.moveTargetY = closestFriendlyShrine.x, closestFriendlyShrine.y
                                         d.targetRescueShrine = g.shrines[closestFriendlyShrine.index]
                                     end
@@ -477,7 +484,7 @@ function M.update(dt, g)
                             d.rescueTarget = g.doods[closestDownFriendly.index]
                         end
                     elseif d.priority == "Medic" then
-                        if closestDownFriendly.index then
+                        if closestDownFriendly.index and not d.attackers then
                             d.rescueTarget = g.doods[closestDownFriendly.index]
                         elseif closestEnemy.index then
                             M.setAttackTarget(d, g, closestEnemy.index)
