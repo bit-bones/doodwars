@@ -13,11 +13,7 @@ local mouseRegistry = mouse_map.M
 local sti = require("libs/sti")
 local navmesh = require("maps/map1shrinetest-navmesh")
 
-local drawOrder
-
 function love.load()
-    drawOrder = {}
-
     love.physics.setMeter(32)
     game.world = love.physics.newWorld(0, 0, true)
 
@@ -209,6 +205,12 @@ local function getLayouts()
     local screenW, screenH = love.graphics.getDimensions()
     local screenCenterX = screenW / 2
 
+    local topBarY = 20
+    local topBarSections = {
+        {label = "Doods"},
+
+    }
+
     local doodLayouts = {}
 
     for i, d in ipairs(game.doods) do
@@ -253,6 +255,10 @@ function love.update(dt)
     game.layouts = getLayouts()
     game.mouseCameraX, game.mouseCameraY = love.mouse.getPosition()
     game.mouseWorldX, game.mouseWorldY = game.camera:mousePosition()
+
+    if game.paused then
+        return
+    end
 
     game.world:update(dt)
     game.map:update(dt)
@@ -315,13 +321,12 @@ function love.draw()
 
     -- doods
     for i, d in pairs(game.doods) do
-        drawOrder[i] = d
         local box = doodLayouts[i].box
         local boxColor = {1, 1, 1,}
 
         -- set box color
         if d.playerControlled then boxColor = {0.3, 1, 0.3} -- green
-        elseif d.selected then boxColor = {0.5, 0.5, 1}     -- blue
+        elseif d.selected then boxColor = {0.5, 0.75, 1}     -- blue
         elseif d.attackers then
             for _, attacker in pairs(d.attackers) do
                 if attacker.selected then
@@ -363,20 +368,20 @@ function love.draw()
                                     "\nx: "..math.floor(bodyX)..
                                     "\ny: "..math.floor(bodyY)..
                                     "\nstate: "..d.state..
-                                    -- "\ndir: "..d.dir..
-                                    -- "\ncolor: "..d.color..
-                                    -- "\nselected: "..tostring(d.selected)..
+                                    "\ndir: "..d.dir..
+                                    "\ncolor: "..d.color..
+                                    "\nselected: "..tostring(d.selected)..
+                                    "\ncontrolled: "..tostring(d.playerControlled)..
                                     "\nattackers: "..(attackerCount or "none")..
                                     "\nattack target: "..(attackTarget or "none")..
+                                    "\nrescue target: "..(rescueTarget or "none")..
                                     "\npuller: "..(puller or "none")..
                                     "\nhas joint: "..tostring(hasJoint)..
-                                    "\nrescue target: "..(rescueTarget or "none")..
                                     "\nwander timer: "..string.format("%.1f", tostring(d.wanderTimer))..
                                     "\nscan timer: "..string.format("%.1f", tostring(d.scanTimer))..
                                     "\nhurt timer: "..string.format("%.1f", tostring(d.hurtTimer))..
                                     "\nattack timer: "..string.format("%.1f", tostring(d.attackTimer))..
                                     "\nhealth: "..math.floor(d.hp)
-                                    -- "\ncontrolled: "..tostring(d.playerControlled)..
                                     ,box.x + box.w, box.y + box.h)
 
             end
@@ -420,6 +425,7 @@ function love.draw()
                         "\nmouseY: "..math.floor(game.mouseWorldY)..
                         -- "\nzoom scale: "..game.camera.scale..
                         "\ncontrolling dood: "..(controlledDoodIndex or "none")..
+                        "\npaused: "..tostring(game.paused)..
                         "\nalt toggle: "..altToggle
                         ,10, 30)
 

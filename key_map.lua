@@ -60,8 +60,10 @@ local keyMap = {
     },
 --==================================================--
     escape = {
-        pressed = function ()
-            love.event.quit()
+        pressed = function (g)
+            g.paused = not g.paused
+            
+            -- love.event.quit()
         end
     },
 --==================================================--

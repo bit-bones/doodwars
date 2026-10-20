@@ -101,12 +101,12 @@ local function stopMove(d)
     d.route = nil
     d.moveTargetX = nil
     d.moveTargetY = nil
-    d.state = "idle"
     d.animation = d.animations.idle
     d.scanTimer = 0
-    if d.state ~= "pulling" then
-        d.state = "idle"
-    end
+    d.state = "idle"
+    -- if d.state ~= "rescue" then
+    --     d.state = "idle"
+    -- end
 end
 
 function M.moveTo(d)
@@ -283,7 +283,7 @@ function M.shrineScan(d, g)
             index = closestFriendlyShrineIndex,
             dis = closestFriendlyShrineDis,
             x = closestFriendlyShrineX,
-            y = closestFriendlyShrineY + 50,
+            y = closestFriendlyShrineY,
         },
 
         closestNeutralShrine = {
@@ -308,6 +308,13 @@ function M.doodScan(d, g)
     local downFriendlyDistances = {}
 
     for ii, dd in ipairs(g.doods) do
+        -- local attackerCount = 0
+        -- if dd.attackers then
+        --     for _, _ in pairs(dd.attackers) do
+        --         attackerCount = attackerCount + 1
+        --     end
+        -- end
+
         if dd ~= d and dd.color ~= d.color and dd.hp > 0 and dd.state ~= "downed" then
             local dis = love.physics.getDistance(d.fixture, dd.fixture)
             if dis <= DEFAULTS.SCAN_RADIUS then
@@ -458,7 +465,7 @@ function M.update(dt, g)
                             elseif not d.rescueTarget.joint and not d.rescueTarget.puller then
                                 local bodyX, bodyY = d.body:getPosition()
                                 local targetBodyX, targetbodyY = d.rescueTarget.body:getPosition()
-                                d.rescueTarget.joint = love.physics.newWeldJoint(d.body, d.rescueTarget.body, bodyX, bodyY, targetBodyX, targetbodyY, false)
+                                d.rescueTarget.joint = love.physics.newDistanceJoint(d.body, d.rescueTarget.body, bodyX, bodyY, targetBodyX, targetbodyY, false)
                                 d.rescueTarget.puller = d
 
                                 if d.rescueTarget.joint and d.rescueTarget.puller == d then
@@ -498,15 +505,23 @@ function M.update(dt, g)
             end
 
             -- idle scanning
-            if d.state == "idle" then
-                M.clearTargets(d)
+            if d.state == "idle" or d.state == "walk" then
+                if d.state == "idle" then
+                    M.clearTargets(d)
+                end
                 d.body:setLinearDamping(2)
 
                 d.scanTimer = d.scanTimer - dt
                 if d.scanTimer <= 0 then
                     d.scanTimer = DEFAULTS.SCAN_TIME
+
                     local scan = M.doodScan(d, g)
-                    local closestEnemy = scan.closestEnemy
+                    local closestEnemy = {
+                        dis = scan.closestEnemy and scan.closestEnemy.dis,
+                        index = scan.closestEnemy and scan.closestEnemy.index,
+                        dood = g.doods[scan.closestEnemy.index],
+                    }
+
                     local closestDownFriendly = {
                         dis = scan.closestDownFriendly and scan.closestDownFriendly.dis,
                         index = scan.closestDownFriendly and scan.closestDownFriendly.index,

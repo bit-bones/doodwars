@@ -9,6 +9,7 @@ local game = {
     keyPanSpeed = 150,
     mousePanSpeed = 5,
     middleMousePanSpeed = 0.1,
+    paused = false,
     cameraLocked = false,
     mouseCameraX = 0,
     mouseCameraY = 0,
