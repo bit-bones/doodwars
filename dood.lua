@@ -104,6 +104,9 @@ local function stopMove(d)
     d.state = "idle"
     d.animation = d.animations.idle
     d.scanTimer = 0
+    if d.state ~= "pulling" then
+        d.state = "idle"
+    end
 end
 
 function M.moveTo(d)
@@ -195,10 +198,12 @@ function M.clearTargets(d)
     end
 
     if d.rescueTarget then
-        if d.rescueTarget.joint then
-            d.rescueTarget.joint:destroy()
-            d.rescueTarget.joint = nil
+        if d.rescueTarget.puller == d then
             d.rescueTarget.puller = nil
+            if d.rescueTarget.joint then
+                d.rescueTarget.joint:destroy()
+                d.rescueTarget.joint = nil
+            end
         end
         d.rescueTarget = nil
     end
@@ -223,7 +228,7 @@ function M.healTarget(d, dt, target)
         target.animation = target.animations.idle
         target.scanTimer = 0
 
-        if target.joint and target.puller == d then
+        if target.puller == d then
             target.joint:destroy()
             target.joint = nil
             target.puller = nil
@@ -231,6 +236,7 @@ function M.healTarget(d, dt, target)
         if d.targetRescueShrine then
             d.targetRescueShrine = nil
         end
+
         d.rescueTarget = nil
         d.state = "idle"
         d.animation = d.animations.idle
@@ -309,7 +315,7 @@ function M.doodScan(d, g)
             end
         end
 
-        if dd ~= d and dd.color == d.color and dd.state == "downed" and not dd.joint then
+        if dd ~= d and dd.color == d.color and dd.state == "downed" and dd.puller == nil then
             local dis = love.physics.getDistance(d.fixture, dd.fixture)
             if dis <= DEFAULTS.SCAN_RADIUS then
                 downFriendlyDistances[ii] = dis
@@ -452,13 +458,12 @@ function M.update(dt, g)
                             elseif not d.rescueTarget.joint and not d.rescueTarget.puller then
                                 local bodyX, bodyY = d.body:getPosition()
                                 local targetBodyX, targetbodyY = d.rescueTarget.body:getPosition()
-                                d.rescueTarget.joint = love.physics.newDistanceJoint(d.body, d.rescueTarget.body, bodyX, bodyY, targetBodyX, targetbodyY, false)
+                                d.rescueTarget.joint = love.physics.newWeldJoint(d.body, d.rescueTarget.body, bodyX, bodyY, targetBodyX, targetbodyY, false)
                                 d.rescueTarget.puller = d
 
                                 if d.rescueTarget.joint and d.rescueTarget.puller == d then
                                     d.state = "pulling"
                                     if closestFriendlyShrine then
-                                        -- d.rescueTarget.body:setLinearDamping(2)
                                         d.moveTargetX, d.moveTargetY = closestFriendlyShrine.x, closestFriendlyShrine.y
                                         d.targetRescueShrine = g.shrines[closestFriendlyShrine.index]
                                     end
@@ -494,12 +499,8 @@ function M.update(dt, g)
 
             -- idle scanning
             if d.state == "idle" then
+                M.clearTargets(d)
                 d.body:setLinearDamping(2)
-                if d.rescueTarget and d.rescueTarget.joint then
-                    d.rescueTarget.joint:destroy()
-                    d.rescueTarget.joint = nil
-                    d.puller = nil
-                end
 
                 d.scanTimer = d.scanTimer - dt
                 if d.scanTimer <= 0 then
@@ -519,7 +520,7 @@ function M.update(dt, g)
                             d.rescueTarget = g.doods[closestDownFriendly.index]
                         end
                     elseif d.priority == "Medic" then
-                        if closestDownFriendly.index and not d.attackers and not closestDownFriendly.dood.joint then
+                        if closestDownFriendly.index and not d.attackers then
                             d.rescueTarget = g.doods[closestDownFriendly.index]
                         elseif closestEnemy.index then
                             M.setAttackTarget(d, g, closestEnemy.index)
@@ -607,7 +608,7 @@ function M.newDood(x, y, color, g)
         y = y,
         playerControlled = false,
         selected = false,
-        pulling = false,
+        puller = nil,
         animations = animations,
         animation = animations.idle,
         stopCheckTimer = 0,

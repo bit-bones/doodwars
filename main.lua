@@ -20,7 +20,7 @@ function love.load()
 
     love.physics.setMeter(32)
     game.world = love.physics.newWorld(0, 0, true)
-    
+
     love.graphics.setDefaultFilter("nearest", "nearest")
 
     game.map = sti("maps/map1shrinetest.lua", {"box2d"})
@@ -345,6 +345,7 @@ function love.draw()
                 local rescueTarget = d.rescueTarget and d.rescueTarget.index
                 local attackTarget = d.attackTarget and d.attackTarget.index
                 local puller = d.puller and d.puller.index
+                local hasJoint = (d.joint ~= nil)
 
                 local attackerCount = 0
                 if d.attackers then
@@ -365,14 +366,15 @@ function love.draw()
                                     -- "\ndir: "..d.dir..
                                     -- "\ncolor: "..d.color..
                                     -- "\nselected: "..tostring(d.selected)..
-                                    -- "\nattackers: "..(attackerCount or "none")..
-                                    -- "\nattack target: "..(attackTarget or "none")..
+                                    "\nattackers: "..(attackerCount or "none")..
+                                    "\nattack target: "..(attackTarget or "none")..
                                     "\npuller: "..(puller or "none")..
+                                    "\nhas joint: "..tostring(hasJoint)..
                                     "\nrescue target: "..(rescueTarget or "none")..
                                     "\nwander timer: "..string.format("%.1f", tostring(d.wanderTimer))..
                                     "\nscan timer: "..string.format("%.1f", tostring(d.scanTimer))..
-                                    -- "\nhurt timer: "..string.format("%.1f", tostring(d.hurtTimer))..
-                                    -- "\nattack timer: "..string.format("%.1f", tostring(d.attackTimer))..
+                                    "\nhurt timer: "..string.format("%.1f", tostring(d.hurtTimer))..
+                                    "\nattack timer: "..string.format("%.1f", tostring(d.attackTimer))..
                                     "\nhealth: "..math.floor(d.hp)
                                     -- "\ncontrolled: "..tostring(d.playerControlled)..
                                     ,box.x + box.w, box.y + box.h)
