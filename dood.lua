@@ -528,6 +528,15 @@ function M.update(dt, g)
                         dood = g.doods[scan.closestDownFriendly.index],
                     }
 
+                    local shrineScan = M.shrineScan(d, g)
+                    local closestNeutralShrineDis = shrineScan and shrineScan.closestNeutralShrine.dis
+                    local closestNeutralShrineIndex = shrineScan and shrineScan.closestNeutralShrine.index
+                    local closestNeutralShrine = g.shrines[closestNeutralShrineIndex]
+
+                    local closestEnemyShrineDis = shrineScan and shrineScan.closestEnemyShrine.dis
+                    local closestEnemyShrineIndex = shrineScan and shrineScan.closestEnemyShrine.index
+                    local closestEnemyShrine = g.shrines[closestEnemyShrineIndex]
+
                     if d.priority == "Default" then
                         if closestEnemy.index then
                             M.setAttackTarget(d, g, closestEnemy.index)
