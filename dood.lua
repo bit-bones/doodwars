@@ -96,6 +96,19 @@ function M.getNavigationClearance(color, scale)
     return spriteW * (scale or DEFAULTS.SCALE) * COLLISION_RADIUS_RATIO + NAVIGATION_MARGIN
 end
 
+local function setDirection(difX, difY, d)
+    if difY > 0 and difY > difX then
+        d.dir = "down"
+    elseif difY < 0 and difY < difX then
+        d.dir = "up"
+    end
+    if difX > 0 and difX > difY then
+        d.dir = "right"
+    elseif difX < 0 and difX < difY then
+        d.dir = "left"
+    end
+end
+
 local function stopMove(d)
     d.body:setLinearVelocity(0, 0)
     d.route = nil
@@ -163,16 +176,7 @@ function M.moveTo(d)
 
     d.body:setLinearVelocity(difX / distance * DEFAULTS.MOVE_SPEED,difY / distance * DEFAULTS.MOVE_SPEED)
 
-    if difY > 0 then
-        d.dir = "down"
-    elseif difY < 0 then
-        d.dir = "up"
-    end
-    if difX > 0 then
-        d.dir = "right"
-    elseif difX < 0 then
-        d.dir = "left"
-    end
+    setDirection(difX, difY, d)
 end
 
 function M.getSmallestValueIndex(distances)
@@ -409,17 +413,10 @@ function M.update(dt, g)
                     if d.attackTimer <= 0 then
                         local bodyX, bodyY = d.body:getPosition()
                         local targetX, targetY = d.attackTarget.body:getPosition()
+                        local difX = targetX - bodyX
+                        local difY = targetY - bodyY
 
-                        if targetY > bodyY then
-                            d.dir = "down"
-                        elseif targetY < bodyY then
-                            d.dir = "up"
-                        end
-                        if targetX > bodyX then
-                            d.dir = "right"
-                        elseif targetX < bodyX then
-                            d.dir = "left"
-                        end
+                        setDirection(difX, difY, d)
 
                         d.attackTarget.hp = d.attackTarget.hp - d.damage
                         d.attackTimer = DEFAULTS.ATTACK_TIME
