@@ -506,6 +506,7 @@ function M.update(dt, g)
                 if d.state == "idle" then
                     M.clearTargets(d)
                 end
+
                 d.body:setLinearDamping(2)
 
                 d.scanTimer = d.scanTimer - dt
