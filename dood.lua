@@ -137,6 +137,7 @@ function M.moveTo(d)
             return
         end
         d.routeIndex = 1
+        d.routeTargetX, d.routeTargetY = d.moveTargetX, d.moveTargetY
     end
 
     local waypoint = d.route[d.routeIndex]
@@ -384,8 +385,6 @@ function M.update(dt, g)
                         end
                         d.attackers = {}
                     end
-                    d.moveTargetX = nil
-                    d.moveTargetY = nil
                     M.clearTargets(d)
                     d.body:setLinearDamping(30)
                     d.state = "downed"
@@ -398,9 +397,13 @@ function M.update(dt, g)
             -- attack
             if d.attackTarget then
                 if d.attackTarget.state == "downed" or d.attackTarget.hp <= 0 then
-                    d.attackTarget = nil
+                    M.clearTargets(d)
+                    d.state = "idle"
+                    d.animation = d.animations.idle
+                    d.scanTimer = 0
                     return
                 end
+                local targetX, targetY = d.attackTarget.body:getPosition()
                 local distance = love.physics.getDistance(d.fixture, d.attackTarget.fixture)
 
                 if distance <= d.collisionRadius * 2 then
@@ -410,9 +413,8 @@ function M.update(dt, g)
                     d.moveTargetX, d.moveTargetY = nil, nil
                     d.route, d.routeIndex = nil, nil
 
-                    if d.attackTimer <= 0 then
+                    if d.attackTimer <= 0 and d.state == "attack" then
                         local bodyX, bodyY = d.body:getPosition()
-                        local targetX, targetY = d.attackTarget.body:getPosition()
                         local difX = targetX - bodyX
                         local difY = targetY - bodyY
 
@@ -428,6 +430,16 @@ function M.update(dt, g)
                     d.attackTimer = d.attackTimer - dt
                 else
                     d.moveTargetX, d.moveTargetY = d.attackTarget.body:getPosition()
+
+                    -- reset route if the target has moved from the original location
+                    if d.route and d.routeTargetX and d.routeTargetY then
+                        local difX = targetX - d.routeTargetX
+                        local difY = targetY - d.routeTargetY
+
+                        if difX * difX + difY * difY >= 12 * 12 then
+                            d.route, d.routeIndex = nil, nil
+                        end
+                    end
                 end
 
             -- rescue
@@ -507,8 +519,6 @@ function M.update(dt, g)
                     M.clearTargets(d)
                 end
 
-                d.body:setLinearDamping(2)
-
                 d.scanTimer = d.scanTimer - dt
                 if d.scanTimer <= 0 then
                     d.scanTimer = DEFAULTS.SCAN_TIME
@@ -542,7 +552,7 @@ function M.update(dt, g)
                             d.rescueTarget = g.doods[closestDownFriendly.index]
                         end
                     elseif d.priority == "Medic" then
-                        if closestDownFriendly.index and not d.attackers then
+                        if closestDownFriendly.index then
                             d.rescueTarget = g.doods[closestDownFriendly.index]
                         elseif closestEnemy.index then
                             M.setAttackTarget(d, g, closestEnemy.index)
@@ -616,6 +626,7 @@ function M.newDood(x, y, color, g)
     local fixture = love.physics.newFixture(body, shape, 1)
 
     body:setFixedRotation(true)
+    body:setLinearDamping(2)
     fixture:setFriction(0)
 
     local dood = {
