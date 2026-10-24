@@ -29,7 +29,7 @@ local mouseMap = {
             end
 
             if love.keyboard.isDown("lctrl") then
-                if clickedDood and clickedDood.hp > 0 then
+                if clickedDood and clickedDood.state ~= "downed" then
                     clickedDood.moveTargetX = nil
                     clickedDood.moveTargetY = nil
 
@@ -101,17 +101,11 @@ local mouseMap = {
 --==================================================--
     [3] = { -- middle mouse button
         pressed = function (x, y, g)
-            g.previousMouseCameraX = g.mouseCameraX
-            g.previousMouseCameraY = g.mouseCameraY
-        end,
-
-        down = function (dt, g)
-            local dx = g.mouseCameraX - g.previousMouseCameraX
-            local dy = g.mouseCameraY - g.previousMouseCameraY
-            g.camera:lockPosition(g.camera.x - dx * g.middleMousePanSpeed, g.camera.y - dy * g.middleMousePanSpeed)
+            states.middleMouseDown = true
         end,
 
         released = function (x, y, g)
+            states.middleMouseDown = false
 
         end,
     },
@@ -142,6 +136,12 @@ function M.mousereleased(cx, cy, button, game)
     local action = mouseMap[button]
     if action and action.released then
         action.released(cx, cy, game)
+    end
+end
+
+function M.mousemoved(x, y, dx, dy, g)
+    if states.middleMouseDown then
+        g.camera:lookAt(g.camera.x - dx, g.camera.y - dy)
     end
 end
 

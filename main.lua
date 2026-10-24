@@ -448,6 +448,10 @@ function love.mousereleased(x, y, button)
     mouseRegistry.mousereleased(x, y, button, game)
 end
 
+function love.mousemoved(x, y, dx, dy)
+    mouseRegistry.mousemoved(x, y, dx, dy, game)
+end
+
 function love.wheelmoved(x, y)
     if y > 0 then
         game.camera:zoom(1 + game.zoomSpeed)

@@ -1,7 +1,6 @@
 local dood = require("dood")
 
 local states = {
-    shiftDown = false,
     altToggle = 0,
 }
 
@@ -48,13 +47,11 @@ local keyMap = {
     },
 --==================================================--
     lshift = {
-        down = function (dt, g)
-            states.shiftDown = true
+        pressed = function (g)
             g.keyPanSpeed = 800
         end,
 
         released = function (g)
-            states.shiftDown = false
             g.keyPanSpeed = 150
         end,
     },
