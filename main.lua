@@ -1,5 +1,7 @@
 require("debug_helpers")
 
+local unpack = table.unpack or unpack
+
 local game = require("game")
 local dood = require("dood")
 local shrineRegistry = require("shrine")
@@ -253,8 +255,6 @@ end
 
 function love.update(dt)
     game.layouts = getLayouts()
-    game.mouseCameraX, game.mouseCameraY = love.mouse.getPosition()
-    game.mouseWorldX, game.mouseWorldY = game.camera:mousePosition()
 
     if game.paused then
         return
@@ -264,7 +264,6 @@ function love.update(dt)
     game.map:update(dt)
     dood.M.update(dt, game)
     keyRegistry.update(dt, game)
-    mouseRegistry.update(dt, game)
 
     local doodLayouts = game.layouts.doods
     if game.cameraLocked and game.controlledDood then
@@ -274,6 +273,19 @@ function love.update(dt)
 end
 
 function love.draw()
+    local function getColor()
+        return {love.graphics.getColor()}
+    end
+
+    local function setColor(r, g, b, a)
+        if r and not g and not b and not a then
+            love.graphics.setColor(r)
+        else
+            a = a or 1
+            love.graphics.setColor(r, g, b, a)
+        end
+    end
+
     local layouts = getLayouts()
     local map = game.map
     local doodLayouts = layouts.doods
@@ -318,7 +330,6 @@ function love.draw()
         end
     end
 
-
     -- doods
     for i, d in pairs(game.doods) do
         local box = doodLayouts[i].box
@@ -337,13 +348,12 @@ function love.draw()
 
         if mouseRegistry.mouseHover(game.mouseWorldX, game.mouseWorldY, box) or altToggle > 0 then
             local shape = d.fixture:getShape()
-            local bodyX, bodyY = d.body:getWorldPoint(shape:getPoint())
 
             -- box
-            local pr, pg, pb, pa = love.graphics.getColor()
-            love.graphics.setColor(boxColor)
+            local pc = getColor()
+            setColor(boxColor)
             love.graphics.rectangle("line", box.x, box.y, box.w, box.h)
-            love.graphics.setColor(pr, pg, pb, pa)
+            setColor(pc)
 
             -- debug info
             if altToggle == 3 or altToggle == 2 and d.selected then
@@ -360,13 +370,13 @@ function love.draw()
                 end
 
                 if d.moveTargetX and d.moveTargetY then
-                    love.graphics.circle("fill", d.moveTargetX, d.moveTargetY, 10)
+                    love.graphics.circle("fill", d.moveTargetX, d.moveTargetY, 5)
                 end
 
                 love.graphics.setFont(fonts.debugWorld)
                 love.graphics.print("\nindex: "..d.index..
-                                    "\nx: "..math.floor(bodyX)..
-                                    "\ny: "..math.floor(bodyY)..
+                                    "\nx: "..math.floor(d.bodyX)..
+                                    "\ny: "..math.floor(d.bodyY)..
                                     "\nstate: "..d.state..
                                     "\ndir: "..d.dir..
                                     "\ncolor: "..d.color..
@@ -387,14 +397,14 @@ function love.draw()
             end
 
             if altToggle >= 4 then
-                love.graphics.circle("line", bodyX, bodyY, shape:getRadius())
+                love.graphics.circle("line", d.bodyX, d.bodyY, shape:getRadius())
             end
         end
     end
 
     -- navmesh
     if altToggle >= 4 then
-        local pr, pg, pb, pa = love.graphics.getColor()
+        local pc = getColor()
         for _, polyMap in ipairs(navmesh) do
             for _, polygon in ipairs(polyMap) do
                 local vertices = {}
@@ -405,15 +415,29 @@ function love.draw()
                 end
 
                 if #vertices >= 6 then
-                    love.graphics.setColor(0.1, 0.9, 0.7, 0.18)
+                    setColor(0.1, 0.9, 0.7, 0.18)
                     love.graphics.polygon("fill", vertices)
 
-                    love.graphics.setColor(1, 0.8, 0.1, 0.9)
+                    setColor(1, 0.8, 0.1, 0.9)
                     love.graphics.polygon("line", vertices)
                 end
             end
         end
-        love.graphics.setColor(pr, pg, pb, pa)
+        setColor(pc)
+    end
+
+    -- selection box
+    local box = game.selectionBox
+    if mouse_map.states.leftClickDown and box.w and box.h then
+        local previousLineWidth = love.graphics.getLineWidth()
+        local pc = getColor()
+        love.graphics.setLineWidth(1 / game.camera.scale)
+        setColor(0, 1, 0, 0.1)
+        love.graphics.rectangle("fill", box.x, box.y, box.w, box.h)
+        setColor(0, 1, 0)
+        love.graphics.rectangle("line", box.x, box.y, box.w, box.h)
+        love.graphics.setLineWidth(previousLineWidth)
+        setColor(pc)
     end
 
    game.camera:detach()

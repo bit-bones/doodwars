@@ -3,6 +3,13 @@ local pathfun = require("libs/pathfun")
 local navmesh = require("maps/map1shrinetest-navmesh")
 local navigation = pathfun.Navigation(navmesh)
 
+local function insideRectangle(x, y, rectangle)
+    if rectangle == nil then
+        return false
+    end
+    return x > rectangle.x and x < rectangle.x + rectangle.w and y > rectangle.y and y < rectangle.y + rectangle.h
+end
+
 love.graphics.setDefaultFilter("nearest", "nearest")
 
 --animations
@@ -130,8 +137,7 @@ function M.moveTo(d)
     d.animation = d.animations.walk
 
     if not d.route or #d.route == 0 then
-        local bodyX, bodyY = d.body:getPosition()
-        d.route = navigation:shortest_path(bodyX, bodyY, d.moveTargetX, d.moveTargetY)
+        d.route = navigation:shortest_path(d.bodyX, d.bodyY, d.moveTargetX, d.moveTargetY)
         if not d.route or #d.route == 0 then
             d.body:setLinearVelocity(0, 0)
             return
@@ -162,9 +168,8 @@ function M.moveTo(d)
         end
     end
 
-    local bodyX, bodyY = d.body:getPosition()
-    local difX = waypoint[1] - bodyX
-    local difY = waypoint[2] - bodyY
+    local difX = waypoint[1] - d.bodyX
+    local difY = waypoint[2] - d.bodyY
     local distance = math.sqrt(difX * difX + difY * difY)
 
     if distance < 8 then
@@ -403,7 +408,7 @@ function M.update(dt, g)
                     d.scanTimer = 0
                     return
                 end
-                local targetX, targetY = d.attackTarget.body:getPosition()
+                local targetX, targetY = d.attackTarget.bodyX, d.attackTarget.bodyY
                 local distance = love.physics.getDistance(d.fixture, d.attackTarget.fixture)
 
                 if distance <= d.collisionRadius * 2 then
@@ -414,9 +419,8 @@ function M.update(dt, g)
                     d.route, d.routeIndex = nil, nil
 
                     if d.attackTimer <= 0 and d.state == "attack" then
-                        local bodyX, bodyY = d.body:getPosition()
-                        local difX = targetX - bodyX
-                        local difY = targetY - bodyY
+                        local difX = targetX - d.bodyX
+                        local difY = targetY - d.bodyY
 
                         setDirection(difX, difY, d)
 
@@ -429,7 +433,7 @@ function M.update(dt, g)
                     end
                     d.attackTimer = d.attackTimer - dt
                 else
-                    d.moveTargetX, d.moveTargetY = d.attackTarget.body:getPosition()
+                    d.moveTargetX, d.moveTargetY = d.attackTarget.bodyX, d.attackTarget.bodyY
 
                     -- reset route if the target has moved from the original location
                     if d.route and d.routeTargetX and d.routeTargetY then
@@ -472,9 +476,7 @@ function M.update(dt, g)
                                 M.healTarget(d, dt, d.rescueTarget)
 
                             elseif not d.rescueTarget.joint and not d.rescueTarget.puller then
-                                local bodyX, bodyY = d.body:getPosition()
-                                local targetBodyX, targetbodyY = d.rescueTarget.body:getPosition()
-                                d.rescueTarget.joint = love.physics.newDistanceJoint(d.body, d.rescueTarget.body, bodyX, bodyY, targetBodyX, targetbodyY, false)
+                                d.rescueTarget.joint = love.physics.newDistanceJoint(d.body, d.rescueTarget.body, d.bodyX, d.bodyY, d.rescueTarget.bodyX, d.rescueTarget.bodyY, false)
                                 d.rescueTarget.puller = d
 
                                 if d.rescueTarget.joint and d.rescueTarget.puller == d then
@@ -491,7 +493,7 @@ function M.update(dt, g)
                         end
                     end
                 else
-                    d.moveTargetX, d.moveTargetY = d.rescueTarget.body:getPosition()
+                    d.moveTargetX, d.moveTargetY = d.rescueTarget.bodyX, d.rescueTarget.bodyY
                 end
             end
 
@@ -576,9 +578,8 @@ function M.update(dt, g)
                 if d.wanderTimer > 0 and d.state ~= "downed" then
                     d.wanderTimer = d.wanderTimer - dt
                     if d.wanderTimer <= 0 then
-                        local bodyX, bodyY = d.body:getPosition()
-                        local rx = love.math.random(bodyX - 30, bodyX + 30)
-                        local ry = love.math.random(bodyY - 30, bodyY + 30)
+                        local rx = love.math.random(d.bodyX - 30, d.bodyX + 30)
+                        local ry = love.math.random(d.bodyY - 30, d.bodyY + 30)
                         d.moveTargetX = rx
                         d.moveTargetY = ry
                         d.wanderTimer = love.math.random(4,8)
@@ -587,13 +588,21 @@ function M.update(dt, g)
             end
         end
 
+        -- check if inside selection box
+        if g.mouseStates.leftClickDown and g.selectionBox.w ~= nil or g.selectionBox.h ~= nil then
+            if insideRectangle(d.bodyX, d.bodyY, g.selectionBox) then
+                print(d.index.." in box")
+                d.insideSelectionBox = true
+            end
+        end
+
         -- animations
         local animateSpeed = 0.2
         d.animation[d.dir]:update(animateSpeed * dt)
 
-        local bodyX, bodyY = d.body:getPosition()
-        d.x = bodyX - d.spriteW * d.scale / 2
-        d.y = bodyY - d.spriteH * d.scale / 2 - d.collisionOffsetY
+        d.bodyX, d.bodyY = d.body:getPosition()
+        d.x = d.bodyX - d.spriteW * d.scale / 2
+        d.y = d.bodyY - d.spriteH * d.scale / 2 - d.collisionOffsetY
     end
 end
 
@@ -615,13 +624,8 @@ function M.newDood(x, y, color, g)
     local collisionPadding = 18
     local collisionOffsetY = (spriteH * scale / 2 - collisionRadius) - collisionPadding
 
-    local body = love.physics.newBody(
-        g.world,
-        spriteX + spriteW * scale / 2,
-        spriteY + spriteH * scale / 2 + collisionOffsetY,
-        "dynamic"
-    )
-
+    local bodyX, bodyY = spriteX + spriteW * scale / 2, spriteY + spriteH * scale / 2 + collisionOffsetY
+    local body = love.physics.newBody(g.world, bodyX, bodyY, "dynamic")
     local shape = love.physics.newCircleShape(0, 0, collisionRadius)
     local fixture = love.physics.newFixture(body, shape, 1)
 
@@ -637,21 +641,23 @@ function M.newDood(x, y, color, g)
         priority = "Medic",
         state = "idle",
         dir = "down",
-        x = x,
-        y = y,
+        x = bodyX - spriteW * scale / 2,
+        y = bodyY - spriteH * scale / 2 - collisionOffsetY,
         playerControlled = false,
         selected = false,
         puller = nil,
         animations = animations,
         animation = animations.idle,
         stopCheckTimer = 0,
-        wanderTimer = love.math.random(3,6),
+        wanderTimer = love.math.random(4,8),
         attackTimer = 0,
         hurtTimer = 0,
         scanTimer = 0,
         color = color,
         index = #g.doods + 1,
         body = body,
+        bodyX = bodyX,
+        bodyY = bodyY,
         scale = scale,
         spriteW = spriteW,
         spriteH = spriteH,

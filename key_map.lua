@@ -79,12 +79,6 @@ local M = {}
 
 -- update
 function M.update(dt, g)
-    for key, action in pairs(keyMap) do
-        if love.keyboard.isDown(key) and action.down then
-            action.down(dt, g)
-        end
-    end
-
     -- WASD
     local moveX = (love.keyboard.isDown("d") and 1 or 0) - (love.keyboard.isDown("a") and 1 or 0)
     local moveY = (love.keyboard.isDown("s") and 1 or 0) - (love.keyboard.isDown("w") and 1 or 0)

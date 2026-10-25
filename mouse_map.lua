@@ -18,12 +18,13 @@ local states = {}
 local mouseMap = {
 --==================================================--
     [1] = { -- left click
-        released = function (x, y, g)
+        pressed = function (x, y, g)
+            local wx, wy = g.camera:worldCoords(x, y)
 
+            -- check if a dood was clicked
             local clickedDood
             for i, d in ipairs(g.doods) do
                 local box =  g.layouts.doods[i].box
-                local wx, wy = g.mouseWorldX, g.mouseWorldY
 
                 if M.mouseHover(wx, wy, box) then
                     clickedDood = d
@@ -31,7 +32,7 @@ local mouseMap = {
                     break
                 end
             end
-
+            -- toggle player control
             if love.keyboard.isDown("lctrl") then
                 if clickedDood and clickedDood.state ~= "downed" then
                     clickedDood.moveTargetX = nil
@@ -44,7 +45,7 @@ local mouseMap = {
                         clickedDood.selected = false
                     end
                 end
-
+            -- select doods cumulatively
             elseif love.keyboard.isDown("lshift") then
                 if clickedDood and clickedDood ~= g.controlledDood then
                     clickedDood.selected = not clickedDood.selected
@@ -67,6 +68,24 @@ local mouseMap = {
 
             for _, d in ipairs(g.doods) do
                 d.playerControlled = (d == g.controlledDood)
+            end
+
+            if clickedDood == nil then
+                states.leftClickDown = true
+                g.selectionBox.startX = wx
+                g.selectionBox.startY = wy
+            end
+        end,
+
+        released = function (x, y, g)
+            -- select doods inside selection box
+            if states.leftClickDown then
+                for _, d in ipairs(g.doods) do
+                    d.selected = d.insideSelectionBox
+                    d.insideSelectionBox = false
+                end
+                states.leftClickDown = false
+                g.selectionBox = {}
             end
         end,
     },
@@ -106,7 +125,7 @@ local mouseMap = {
     [3] = { -- middle mouse button
         pressed = function (x, y, g)
             states.middleMouseDown = true
-            setCursor("crosshair")
+            setCursor("sizeall")
         end,
 
         released = function (x, y, g)
@@ -120,32 +139,34 @@ local mouseMap = {
 
 
 
--- update
-function M.update(dt, game)
-    for button, action in pairs(mouseMap) do
-        if love.mouse.isDown(button) and action.down then
-            action.down(dt, game)
-        end
-    end
-end
-
 -- button pressed
-function M.mousepressed(cx, cy, button, game)
+function M.mousepressed(x, y, button, game)
     local action = mouseMap[button]
     if action and action.pressed then
-        action.pressed(cx, cy, game)
+        action.pressed(x, y, game)
     end
 end
 
 -- button released
-function M.mousereleased(cx, cy, button, game)
+function M.mousereleased(x, y, button, game)
     local action = mouseMap[button]
     if action and action.released then
-        action.released(cx, cy, game)
+        action.released(x, y, game)
     end
 end
 
 function M.mousemoved(x, y, dx, dy, g)
+    g.mouseWorldX, g.mouseWorldY = g.camera:worldCoords(x, y)
+
+    -- selection box
+    if states.leftClickDown then
+        g.selectionBox.x = math.min(g.selectionBox.startX, g.mouseWorldX)
+        g.selectionBox.y = math.min(g.selectionBox.startY, g.mouseWorldY)
+        g.selectionBox.w = math.abs(g.mouseWorldX - g.selectionBox.startX)
+        g.selectionBox.h = math.abs(g.mouseWorldY - g.selectionBox.startY)
+    end
+
+    -- middle mouse panning
     if states.middleMouseDown then
         g.camera:lookAt(g.camera.x - dx, g.camera.y - dy)
     end

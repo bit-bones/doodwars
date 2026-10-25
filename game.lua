@@ -24,6 +24,7 @@ local game = {
     shrines = {},
     bases = {},
     props = {},
+    selectionBox = {},
 }
 
 game.camera.x = 215
