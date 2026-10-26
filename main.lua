@@ -1,19 +1,27 @@
 require("debug_helpers")
 
-local unpack = table.unpack or unpack
-
 local game = require("game")
 local dood = require("dood")
 local shrineRegistry = require("shrine")
-
 local key_map = require("key_map")
 local keyRegistry = key_map.M
-
 local mouse_map = require("mouse_map")
 local mouseRegistry = mouse_map.M
-
 local sti = require("libs/sti")
 local navmesh = require("maps/map1shrinetest-navmesh")
+
+local function getColor()
+    return {love.graphics.getColor()}
+end
+
+local function setColor(r, g, b, a)
+    if r and not g and not b and not a then
+        love.graphics.setColor(r)
+    else
+        a = a or 1
+        love.graphics.setColor(r, g, b, a)
+    end
+end
 
 function love.load()
     love.physics.setMeter(32)
@@ -64,7 +72,6 @@ function love.load()
             local body = love.physics.newBody(game.world, x, y, "static")
             body:setAwake(false)
             body:setActive(false)
-
             local shape = love.physics.newCircleShape(0, 0, 50)
             local fixture = love.physics.newFixture(body, shape, 0)
 
@@ -123,7 +130,7 @@ function love.load()
             items[#items + 1] = {
                 sortY = currentProp.y + 20,
                 draw = function()
-                    love.graphics.setColor(1, 1, 1, 1)
+                    setColor(1, 1, 1)
                     drawProp(map.layers["trees"], currentProp)
                 end,
             }
@@ -135,7 +142,7 @@ function love.load()
             items[#items + 1] = {
                 sortY = sortY,
                 draw = function()
-                    love.graphics.setColor(1, 1, 1, 1)
+                    setColor(1, 1, 1)
                     shrineRegistry.drawShrine(currentShrine, game)
                 end,
             }
@@ -147,7 +154,7 @@ function love.load()
             items[#items + 1] = {
                 sortY = sortY,
                 draw = function()
-                    love.graphics.setColor(1, 1, 1, 1)
+                    setColor(1, 1, 1)
                     shrineRegistry.drawBase(currentBase, game)
                 end,
             }
@@ -155,13 +162,16 @@ function love.load()
 
         for _, d in ipairs(game.doods) do
             local currentDood = d
-            local _, spriteHeight =
-                currentDood.animation[currentDood.dir]:getDimensions()
+            local spriteHeight = currentDood.animation[currentDood.dir]:getDimensions()
 
             items[#items + 1] = {
                 sortY = currentDood.y + spriteHeight * currentDood.scale,
                 draw = function()
-                    love.graphics.setColor(1, 1, 1, 1)
+                    if d.insideSelectionBox then
+                        setColor(.7, .7, .7)
+                    else
+                        setColor(1, 1, 1)
+                    end
                     currentDood.animation[currentDood.dir]:draw(
                         currentDood.animation.image,
                         currentDood.x,
@@ -273,19 +283,6 @@ function love.update(dt)
 end
 
 function love.draw()
-    local function getColor()
-        return {love.graphics.getColor()}
-    end
-
-    local function setColor(r, g, b, a)
-        if r and not g and not b and not a then
-            love.graphics.setColor(r)
-        else
-            a = a or 1
-            love.graphics.setColor(r, g, b, a)
-        end
-    end
-
     local layouts = getLayouts()
     local map = game.map
     local doodLayouts = layouts.doods
@@ -333,7 +330,7 @@ function love.draw()
     -- doods
     for i, d in pairs(game.doods) do
         local box = doodLayouts[i].box
-        local boxColor = {1, 1, 1,}
+        local boxColor = {1, 1, 1}
 
         -- set box color
         if d.playerControlled then boxColor = {0.3, 1, 0.3} -- green
@@ -375,8 +372,10 @@ function love.draw()
 
                 love.graphics.setFont(fonts.debugWorld)
                 love.graphics.print("\nindex: "..d.index..
+                                    "\nhealth: "..math.floor(d.hp)..
                                     "\nx: "..math.floor(d.bodyX)..
                                     "\ny: "..math.floor(d.bodyY)..
+                                    "\ncommand: "..(d.command or "none")..
                                     "\nstate: "..d.state..
                                     "\ndir: "..d.dir..
                                     "\ncolor: "..d.color..
@@ -390,8 +389,7 @@ function love.draw()
                                     "\nwander timer: "..string.format("%.1f", tostring(d.wanderTimer))..
                                     "\nscan timer: "..string.format("%.1f", tostring(d.scanTimer))..
                                     "\nhurt timer: "..string.format("%.1f", tostring(d.hurtTimer))..
-                                    "\nattack timer: "..string.format("%.1f", tostring(d.attackTimer))..
-                                    "\nhealth: "..math.floor(d.hp)
+                                    "\nattack timer: "..string.format("%.1f", tostring(d.attackTimer))
                                     ,box.x + box.w, box.y + box.h)
 
             end
@@ -432,9 +430,9 @@ function love.draw()
         local previousLineWidth = love.graphics.getLineWidth()
         local pc = getColor()
         love.graphics.setLineWidth(1 / game.camera.scale)
-        setColor(0, 1, 0, 0.1)
+        setColor(0, 1, 1, 0.05)
         love.graphics.rectangle("fill", box.x, box.y, box.w, box.h)
-        setColor(0, 1, 0)
+        setColor(0, 1, 1)
         love.graphics.rectangle("line", box.x, box.y, box.w, box.h)
         love.graphics.setLineWidth(previousLineWidth)
         setColor(pc)

@@ -124,9 +124,6 @@ local function stopMove(d)
     d.animation = d.animations.idle
     d.scanTimer = 0
     d.state = "idle"
-    -- if d.state ~= "rescue" then
-    --     d.state = "idle"
-    -- end
 end
 
 function M.moveTo(d)
@@ -176,6 +173,9 @@ function M.moveTo(d)
         d.routeIndex = d.routeIndex + 1
         if d.routeIndex > #d.route then
             stopMove(d)
+            if d.command == "move" then
+              d.command = nil
+            end
         end
         return
     end
@@ -197,8 +197,9 @@ function M.getSmallestValueIndex(distances)
 end
 
 function M.clearTargets(d)
-    d.moveTargetX = nil
-    d.moveTargetY = nil
+    d.command = nil
+    d.moveTargetX, d.moveTargetY = nil, nil
+    d.route, d.routeIndex = nil, nil
 
     if d.attackTarget then
         if d.attackTarget.attackers then
@@ -229,6 +230,7 @@ function M.setAttackTarget(d, g, targetIndex)
 end
 
 function M.healTarget(d, dt, target)
+    d.state = "heal"
     local rescueRate = d.rescueRate or DEFAULTS.RESCUE_RATE
     target.hp = target.hp + rescueRate * dt
 
@@ -377,9 +379,7 @@ function M.update(dt, g)
                     d.hp = 0
                     if d.attackers then
                         for _, attacker in pairs(d.attackers) do
-                            attacker.attackTarget = nil
-                            attacker.moveTargetX, attacker.moveTargetY = nil, nil
-                            attacker.route, attacker.routeIndex = nil, nil
+                            M.clearTargets(attacker)
                             attacker.body:setLinearVelocity(0, 0)
 
                             if attacker.state ~= "downed" then
@@ -408,39 +408,40 @@ function M.update(dt, g)
                     d.scanTimer = 0
                     return
                 end
-                local targetX, targetY = d.attackTarget.bodyX, d.attackTarget.bodyY
+
                 local distance = love.physics.getDistance(d.fixture, d.attackTarget.fixture)
 
                 if distance <= d.collisionRadius * 2 then
-                    d.state = "attack"
+                    d.state = "fight"
                     d.animation = d.animations.idle
                     d.body:setLinearVelocity(0, 0)
                     d.moveTargetX, d.moveTargetY = nil, nil
                     d.route, d.routeIndex = nil, nil
 
-                    if d.attackTimer <= 0 and d.state == "attack" then
-                        local difX = targetX - d.bodyX
-                        local difY = targetY - d.bodyY
+                    if d.attackTimer <= 0 and d.state == "fight" then
+                        local difX = d.attackTarget.bodyX - d.bodyX
+                        local difY = d.attackTarget.bodyY - d.bodyY
 
                         setDirection(difX, difY, d)
-
-                        d.attackTarget.hp = d.attackTarget.hp - d.damage
                         d.attackTimer = DEFAULTS.ATTACK_TIME
-
+                        d.attackTarget.hp = d.attackTarget.hp - d.damage
                         d.attackTarget.animation = d.attackTarget.animations.hurt
                         d.attackTarget.hurtTimer = DEFAULTS.HURT_TIME
-                        d.attackTarget.attackTarget = d.attackTarget.attackTarget or d
+                        if d.command == nil then
+                            d.attackTarget.attackTarget = d
+                        end
                     end
                     d.attackTimer = d.attackTimer - dt
                 else
                     d.moveTargetX, d.moveTargetY = d.attackTarget.bodyX, d.attackTarget.bodyY
 
-                    -- reset route if the target has moved from the original location
+                    -- reset route if the target has moved from their original location
                     if d.route and d.routeTargetX and d.routeTargetY then
-                        local difX = targetX - d.routeTargetX
-                        local difY = targetY - d.routeTargetY
+                        local difX = d.attackTarget.bodyX - d.routeTargetX
+                        local difY = d.attackTarget.bodyY - d.routeTargetY
 
-                        if difX * difX + difY * difY >= 12 * 12 then
+                        local repathTolerance = 12
+                        if difX * difX + difY * difY >= repathTolerance * repathTolerance then
                             d.route, d.routeIndex = nil, nil
                         end
                     end
@@ -450,47 +451,46 @@ function M.update(dt, g)
             elseif d.rescueTarget and d.state ~= "pulling" then
                 local distance = love.physics.getDistance(d.fixture, d.rescueTarget.fixture)
 
+                -- arrived at rescue target
                 if distance <= d.collisionRadius * 2 then
-                    d.state = "rescue"
                     d.animation = d.animations.idle
                     d.body:setLinearVelocity(0, 0)
 
-                    if d.state == "rescue" then
-                        local shrineScan = M.shrineScan(d, g)
-                        local closestFriendlyShrine = shrineScan.closestFriendlyShrine
-                        local scan = M.doodScan(d.rescueTarget, g)
-                        local closestEnemy = scan.closestEnemy
+                    -- scan for nearby enemies and nearest friendly shrine
+                    local shrineScan = M.shrineScan(d, g)
+                    local closestFriendlyShrine = shrineScan.closestFriendlyShrine
+                    local scan = M.doodScan(d.rescueTarget, g)
+                    local closestEnemy = scan.closestEnemy
 
-                        if d.priority == "Default" then
-                            if closestEnemy.index then
-                                M.setAttackTarget(d, g, closestEnemy.index)
-                                if d.rescueTarget then d.rescueTarget = nil end
-                            else
-                                M.healTarget(d, dt, d.rescueTarget)
-                            end
-                        elseif d.priority == "Medic" then
-                            local closestFriendlyShrineDis = closestFriendlyShrine.dis
-                            local closestFriendlyShrineRadius = g.shrines[closestFriendlyShrine.index].shape:getRadius()
-
-                            if not closestEnemy.index or closestEnemy.dis > DEFAULTS.SAFE_RESCUE_DISTANCE or closestFriendlyShrineDis <= closestFriendlyShrineRadius then
-                                M.healTarget(d, dt, d.rescueTarget)
-
-                            elseif not d.rescueTarget.joint and not d.rescueTarget.puller then
-                                d.rescueTarget.joint = love.physics.newDistanceJoint(d.body, d.rescueTarget.body, d.bodyX, d.bodyY, d.rescueTarget.bodyX, d.rescueTarget.bodyY, false)
-                                d.rescueTarget.puller = d
-
-                                if d.rescueTarget.joint and d.rescueTarget.puller == d then
-                                    d.state = "pulling"
-                                    if closestFriendlyShrine then
-                                        d.moveTargetX, d.moveTargetY = closestFriendlyShrine.x, closestFriendlyShrine.y
-                                        d.targetRescueShrine = g.shrines[closestFriendlyShrine.index]
-                                    end
-                                end
-                            end
-
-                        elseif d.priority == "Nearest" then
+                    if d.priority == "Default" then
+                        if closestEnemy.index then
+                            M.setAttackTarget(d, g, closestEnemy.index)
+                            if d.rescueTarget then d.rescueTarget = nil end
+                        else
                             M.healTarget(d, dt, d.rescueTarget)
                         end
+                    elseif d.priority == "Medic" then
+                        local closestFriendlyShrineDis = closestFriendlyShrine.dis
+                        local closestFriendlyShrineRadius = g.shrines[closestFriendlyShrine.index].shape:getRadius()
+
+                        if not closestEnemy.index or closestEnemy.dis > DEFAULTS.SAFE_RESCUE_DISTANCE or closestFriendlyShrineDis <= closestFriendlyShrineRadius then
+                            M.healTarget(d, dt, d.rescueTarget)
+
+                        elseif not d.rescueTarget.joint and not d.rescueTarget.puller then
+                            d.rescueTarget.joint = love.physics.newDistanceJoint(d.body, d.rescueTarget.body, d.bodyX, d.bodyY, d.rescueTarget.bodyX, d.rescueTarget.bodyY, false)
+                            d.rescueTarget.puller = d
+
+                            if d.rescueTarget.joint and d.rescueTarget.puller == d then
+                                d.state = "pulling"
+                                if closestFriendlyShrine then
+                                    d.moveTargetX, d.moveTargetY = closestFriendlyShrine.x, closestFriendlyShrine.y
+                                    d.targetRescueShrine = g.shrines[closestFriendlyShrine.index]
+                                end
+                            end
+                        end
+
+                    elseif d.priority == "Nearest" then
+                        M.healTarget(d, dt, d.rescueTarget)
                     end
                 else
                     d.moveTargetX, d.moveTargetY = d.rescueTarget.bodyX, d.rescueTarget.bodyY
@@ -516,7 +516,7 @@ function M.update(dt, g)
             end
 
             -- idle scanning
-            if d.state == "idle" or d.state == "walk" then
+            if d.command == nil and (d.state == "idle" or d.state == "walk") then
                 if d.state == "idle" then
                     M.clearTargets(d)
                 end
@@ -591,8 +591,9 @@ function M.update(dt, g)
         -- check if inside selection box
         if g.mouseStates.leftClickDown and g.selectionBox.w ~= nil or g.selectionBox.h ~= nil then
             if insideRectangle(d.bodyX, d.bodyY, g.selectionBox) then
-                print(d.index.." in box")
                 d.insideSelectionBox = true
+            else
+                d.insideSelectionBox = false
             end
         end
 
@@ -645,6 +646,7 @@ function M.newDood(x, y, color, g)
         y = bodyY - spriteH * scale / 2 - collisionOffsetY,
         playerControlled = false,
         selected = false,
+        command = nil,
         puller = nil,
         animations = animations,
         animation = animations.idle,

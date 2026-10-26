@@ -108,14 +108,17 @@ local mouseMap = {
                     if clickedDood then
                         if clickedDood.color ~= d.color then
                             dood.M.setAttackTarget(d, g, clickedDood.index)
+                            d.command = "attack"
                         elseif clickedDood ~= d and clickedDood.color == d.color and clickedDood.state == "downed" and clickedDood.puller == nil then
                             d.rescueTarget = clickedDood
+                            d.command = "rescue"
                         end
                     else
                         dood.M.clearTargets(d)
                         d.route = nil
                         d.moveTargetX = wx
                         d.moveTargetY = wy
+                        d.command = "move"
                     end
                 end
             end
