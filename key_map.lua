@@ -9,12 +9,7 @@ local keyMap = {
 --==================================================--
     t = {
         pressed = function (g)
-            if g.controlledDood then
-                local closestShrines = dood.M.shrineScan(g.controlledDood, g)
-                for i, s in ipairs(closestShrines) do
-                    print(i..": "..s.team)
-                end
-            end
+            debug.debug()
         end
     },
 --==================================================--
