@@ -50,7 +50,7 @@ local mouseMap = {
                 if clickedDood and clickedDood ~= g.controlledDood then
                     clickedDood.selected = not clickedDood.selected
                 end
-
+            -- hurt dood
             elseif love.keyboard.isDown("x") then
                 if clickedDood then
                     if clickedDood.state ~= "downed" and clickedDood.hp > 0 then

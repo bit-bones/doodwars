@@ -1,3 +1,5 @@
+local Gamestate = require "libs/hump/gamestate"
+local pause = require "states.pause"
 local dood = require("dood")
 
 local states = {
@@ -9,7 +11,7 @@ local keyMap = {
 --==================================================--
     t = {
         pressed = function (g)
-            debug.debug()
+
         end
     },
 --==================================================--
@@ -53,17 +55,8 @@ local keyMap = {
 --==================================================--
     escape = {
         pressed = function (g)
-            g.paused = not g.paused
-            
+            Gamestate.push(pause)
             -- love.event.quit()
-        end
-    },
---==================================================--
-    f11 = {
-        pressed = function ()
-            local fullscreen = love.window.getFullscreen()
-            fullscreen = not fullscreen
-            love.window.setFullscreen(fullscreen)
         end
     },
 --==================================================--
@@ -99,9 +92,7 @@ function M.update(dt, g)
         else
             d.state = "idle"
             d.animation = d.animations.idle
-            if not d.moveTargetX then
-                d.body:setLinearVelocity(0, 0)
-            end
+            d.body:setLinearVelocity(0, 0)
         end
     else
         g.camera:move(
