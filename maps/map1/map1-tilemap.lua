@@ -22,7 +22,7 @@ return {
       spacing = 0,
       margin = 0,
       columns = 32,
-      image = "../assets/tileset.png",
+      image = "../../assets/tileset.png",
       imagewidth = 1024,
       imageheight = 1024,
       objectalignment = "unspecified",

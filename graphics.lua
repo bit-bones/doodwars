@@ -20,6 +20,13 @@ for i, font in pairs(M.fonts) do
     M.fontHeights[i] = font:getHeight()
 end
 
+M.colors = {
+    white =                 {1, 1, 1, 1},
+    transparentGray =       {0, 0, 0, 0.1},
+    selectionBoxOutline =   {0.1, 1, 0.1, 1},
+    selectionBoxFill =      {0.1, 1, 0.1, 0.1},
+}
+
 function M.getColor()
     return {love.graphics.getColor()}
 end
@@ -31,6 +38,16 @@ function M.setColor(r, g, b, a)
         a = a or 1
         love.graphics.setColor(r, g, b, a)
     end
+end
+
+function M.getGrahics()
+    return {
+        screen = M.screen,
+        fonts = M.fonts,
+        colors = M.colors,
+        getColor = M.getColor,
+        setColor = M.setColor,
+    }
 end
 
 return M

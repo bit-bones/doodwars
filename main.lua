@@ -4,6 +4,8 @@ local Gamestate = require "libs/hump/gamestate"
 local menu = require "states/menu"
 local game = require "states/game"
 
+local graphics = require "graphics"
+
 function love.load()
     Gamestate.registerEvents()
     Gamestate.switch(menu)
@@ -15,4 +17,8 @@ function love.keypressed(key)
         fullscreen = not fullscreen
         love.window.setFullscreen(fullscreen)
     end
+end
+
+function love.resize()
+    graphics.getScreen()
 end

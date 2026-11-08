@@ -1,7 +1,5 @@
 local anim8 = require("libs/anim8")
 local pathfun = require("libs/pathfun")
-local navmesh = require("maps/map1shrinetest-navmesh")
-local navigation = pathfun.Navigation(navmesh)
 
 local function insideRectangle(x, y, rectangle)
     if rectangle == nil then
@@ -126,7 +124,9 @@ local function stopMove(d)
     d.state = "idle"
 end
 
-function M.moveTo(d)
+function M.moveTo(d, g)
+    local navigation = pathfun.Navigation(g.navmesh)
+
     if d.state ~= "pulling" then
         d.state = "walk"
     end
@@ -512,7 +512,7 @@ function M.update(dt, g)
                         d.moveTargetY = 0 + d.collisionRadius * 2
                     end
                 end
-                M.moveTo(d)
+                M.moveTo(d, g)
             end
 
             -- idle scanning

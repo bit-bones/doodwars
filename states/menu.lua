@@ -1,10 +1,16 @@
 local Gamestate = require "libs/hump/gamestate"
 local game = require "states/game"
 
-local graphics = require"graphics"
+local graphics = require "graphics"
 local screen = graphics.screen
 local fonts = graphics.fonts
 local fontHeights = graphics.fontHeights
+local colors = graphics.colors
+local getColor = graphics.getColor
+local setColor = graphics.setColor
+
+local drawing = require "drawing"
+
 
 local menu = {}
 
@@ -14,20 +20,25 @@ end
 
 function menu:startGame()
     Gamestate.switch(game, {
-        map = "maps/map1shrinetest.lua",
-        navmesh = "maps/map1shrinetest-navmesh",
+        map = "map1",
         gameMode = "Doodomination",
     })
 end
 
+local buttons = {
+    {label = "Play"},
+    {label = "Quit"},
+}
+
 function menu:draw()
-    local pc = graphics.getColor()
-    graphics.setColor(0.2, 0.4, 0.2)
+    local previousColor = getColor()
+
+    setColor(0.2, 0.4, 0.2)
     love.graphics.rectangle("fill", 0, 0, screen.w, screen.h)
-    graphics.setColor(1, 1, 1)
-    love.graphics.setFont(fonts.slabsTitle)
-    love.graphics.printf("Dood Wars", 0, 30, 0 + screen.w, "center")
-    graphics.setColor(pc)
+
+    drawing.drawModal("Dood Wars", buttons)
+
+    setColor(previousColor)
 end
 
 function menu:keyreleased(key)

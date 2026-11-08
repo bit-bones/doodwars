@@ -1,9 +1,10 @@
 local game = {}
 
 local Gamestate = require "libs/hump/gamestate"
-local pause = require "states.pause"
-
 local cam = require "libs/hump/camera"
+local sti = require "libs/sti"
+
+local pause = require "states.pause"
 
 local dood = require("dood")
 local shrineRegistry = require("shrine")
@@ -11,16 +12,19 @@ local key_map = require("key_map")
 local keyRegistry = key_map.M
 local mouse_map = require("mouse_map")
 local mouseRegistry = mouse_map.M
-local sti = require("libs/sti")
-local navmesh = require("maps/map1shrinetest-navmesh")
+
 local graphics = require "graphics"
+local colors = graphics.colors
+local getColor = graphics.getColor
+local setColor = graphics.setColor
 
 function game:enter(previous, settings)
     love.physics.setMeter(32)
 
     self.data = {
         gameMode = settings.gameMode,
-        map = sti(settings.map, {"box2d"}),
+        map = sti("maps/"..settings.map.."/"..settings.map.."-tilemap.lua", {"box2d"}),
+        navmesh =  require ("maps."..settings.map.."."..settings.map.."-navmesh"),
         world = love.physics.newWorld(0, 0, true),
         camera = cam.new(0, 0, 2),
         stopCheckTime = 0.5,
@@ -40,6 +44,9 @@ function game:enter(previous, settings)
         props = {},
         selectionBox = {},
     }
+
+    -- self.data.map = sti("maps/"..settings.map.."/"..settings.map.."-tilemap.lua", {"box2d"})
+    -- self.data.navmesh = require "../maps/"..settings.map.."/"..settings.map.."-navmesh.lua"
 
     self.data.camera.x = 215
     self.data.camera.y = 200
@@ -277,7 +284,7 @@ function game:update(dt)
 end
 
 function game:draw()
-    graphics.getScreen()
+    -- graphics.getScreen()
     local layouts = self.data.layouts
     local map = self.data.map
     local doodLayouts = layouts.doods
@@ -403,7 +410,7 @@ function game:draw()
     -- navmesh
     if altToggle >= 4 then
         local pc = graphics.getColor()
-        for _, polyMap in ipairs(navmesh) do
+        for _, polyMap in ipairs(self.data.navmesh) do
             for _, polygon in ipairs(polyMap) do
                 local vertices = {}
 
@@ -428,14 +435,16 @@ function game:draw()
     local box = self.data.selectionBox
     if mouse_map.states.leftClickDown and box.w and box.h then
         local previousLineWidth = love.graphics.getLineWidth()
-        local pc = graphics.getColor()
+        local previousColor = getColor()
+
         love.graphics.setLineWidth(1 / self.data.camera.scale)
-        graphics.setColor(0, 1, 1, 0.05)
+        setColor(colors.selectionBoxFill)
         love.graphics.rectangle("fill", box.x, box.y, box.w, box.h)
-        graphics.setColor(0, 1, 1)
+        setColor(colors.selectionBoxOutline)
         love.graphics.rectangle("line", box.x, box.y, box.w, box.h)
         love.graphics.setLineWidth(previousLineWidth)
-        graphics.setColor(pc)
+
+        setColor(previousColor)
     end
 
    self.data.camera:detach()
