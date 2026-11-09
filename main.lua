@@ -20,5 +20,5 @@ function love.keypressed(key)
 end
 
 function love.resize()
-    graphics.getScreen()
+    graphics.getLayout()
 end

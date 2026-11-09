@@ -1,5 +1,4 @@
 local anim8 = require("libs/anim8")
-local pathfun = require("libs/pathfun")
 
 local function insideRectangle(x, y, rectangle)
     if rectangle == nil then
@@ -125,8 +124,6 @@ local function stopMove(d)
 end
 
 function M.moveTo(d, g)
-    local navigation = pathfun.Navigation(g.navmesh)
-
     if d.state ~= "pulling" then
         d.state = "walk"
     end
@@ -134,7 +131,7 @@ function M.moveTo(d, g)
     d.animation = d.animations.walk
 
     if not d.route or #d.route == 0 then
-        d.route = navigation:shortest_path(d.bodyX, d.bodyY, d.moveTargetX, d.moveTargetY)
+        d.route = g.navigation:shortest_path(d.bodyX, d.bodyY, d.moveTargetX, d.moveTargetY)
         if not d.route or #d.route == 0 then
             d.body:setLinearVelocity(0, 0)
             return

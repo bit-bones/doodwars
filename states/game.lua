@@ -3,6 +3,7 @@ local game = {}
 local Gamestate = require "libs/hump/gamestate"
 local cam = require "libs/hump/camera"
 local sti = require "libs/sti"
+local pathfun = require("libs/pathfun")
 
 local pause = require "states.pause"
 
@@ -45,9 +46,7 @@ function game:enter(previous, settings)
         selectionBox = {},
     }
 
-    -- self.data.map = sti("maps/"..settings.map.."/"..settings.map.."-tilemap.lua", {"box2d"})
-    -- self.data.navmesh = require "../maps/"..settings.map.."/"..settings.map.."-navmesh.lua"
-
+    self.data.navigation = pathfun.Navigation(self.data.navmesh)
     self.data.camera.x = 215
     self.data.camera.y = 200
 

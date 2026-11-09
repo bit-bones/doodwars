@@ -1,6 +1,6 @@
 local Gamestate = require "libs/hump/gamestate"
 local game = require "states/game"
-
+local drawing = require "drawing"
 local graphics = require "graphics"
 local screen = graphics.screen
 local fonts = graphics.fonts
@@ -9,13 +9,10 @@ local colors = graphics.colors
 local getColor = graphics.getColor
 local setColor = graphics.setColor
 
-local drawing = require "drawing"
-
-
 local menu = {}
 
 function menu:init()
-    print("menu initialized")
+    graphics.getLayout()
 end
 
 function menu:startGame()
@@ -26,8 +23,18 @@ function menu:startGame()
 end
 
 local buttons = {
-    {label = "Play"},
-    {label = "Quit"},
+    {
+        label = "Play",
+        fn = function()
+            menu:startGame()
+        end,
+    },
+    {
+        label = "Quit",
+        fn = function()
+            love.event.quit()
+        end,
+    },
 }
 
 function menu:draw()
@@ -45,6 +52,10 @@ function menu:keyreleased(key)
     if key == "return" then
         menu:startGame()
     end
+end
+
+function menu:resize()
+    graphics.getLayout()
 end
 
 return menu

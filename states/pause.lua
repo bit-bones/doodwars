@@ -1,5 +1,6 @@
 local Gamestate = require "libs/hump/gamestate"
-
+-- local menu = require "states/menu"
+local drawing = require "drawing"
 local graphics = require "graphics"
 local screen = graphics.screen
 local fonts = graphics.fonts
@@ -13,19 +14,31 @@ function pause:enter(previous)
     self.previous = previous
 end
 
+local buttons = {
+    {
+        label = "Resume",
+        fn = function ()
+            Gamestate.pop()
+        end
+    },
+    {
+        label = "Options",
+        fn = function ()
+            
+        end
+    },
+    {
+        label = "Main menu",
+        fn = function ()
+            Gamestate.switch()
+        end
+    },
+}
+
 function pause:draw()
     self.previous:draw()
 
-    local pc = getColor()
-
-    setColor(colors.transparentGray)
-    love.graphics.rectangle("fill", screen.centerX - screen.w / 2, screen.centerY - screen.h / 2, screen.w / 2, screen.h / 2, 5, 5)
-
-    setColor(colors.white)
-    love.graphics.setFont(fonts.slabsPause)
-    love.graphics.printf("Pause", screen.centerX - screen.w / 2, screen.centerY - screen.h / 2, 500, "center")
-
-    setColor(pc)
+    drawing.drawModal("Pause", buttons)
 end
 
 function pause:keypressed(key)

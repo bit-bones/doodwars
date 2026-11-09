@@ -1,18 +1,26 @@
 local M = {}
 
+local vPadding, hPadding = 80, 500
+
 M.screen = {}
-function M.getScreen()
+M.container = {}
+
+function M.getLayout()
     M.screen.w, M.screen.h = love.graphics.getDimensions()
     M.screen.centerX = M.screen.w / 2
     M.screen.centerY = M.screen.h / 2
+
+    M.container.w = M.screen.w - hPadding
+    M.container.h = M.screen.h - vPadding
+    M.container.x = M.screen.centerX - M.container.w / 2
+    M.container.y = M.screen.centerY - M.container.h / 2
 end
-M.getScreen()
 
 M.fonts = {
     debugWorld = love.graphics.newFont(10),
     debugHud = love.graphics.newFont(12),
-    slabsTitle = love.graphics.newFont("assets/fonts/ManlineSlabs-xRWVj.ttf", 75),
-    slabsPause = love.graphics.newFont("assets/fonts/ManlineSlabs-xRWVj.ttf", 30),
+    slabsTitle = love.graphics.newFont("assets/fonts/ManlineSlabs-xRWVj.ttf", 70),
+    slabsButtons = love.graphics.newFont("assets/fonts/ManlineSlabs-xRWVj.ttf", 40),
 }
 
 M.fontHeights = {}
@@ -38,16 +46,6 @@ function M.setColor(r, g, b, a)
         a = a or 1
         love.graphics.setColor(r, g, b, a)
     end
-end
-
-function M.getGrahics()
-    return {
-        screen = M.screen,
-        fonts = M.fonts,
-        colors = M.colors,
-        getColor = M.getColor,
-        setColor = M.setColor,
-    }
 end
 
 return M
