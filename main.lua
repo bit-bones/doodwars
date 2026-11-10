@@ -1,10 +1,10 @@
 require "debug_helpers"
 
 local Gamestate = require "libs/hump/gamestate"
-local menu = require "states/menu"
-local game = require "states/game"
-
+local game = require "states.game"
+local menu = require "states.menu"
 local graphics = require "graphics"
+local mouse = require "mouse_map"
 
 function love.load()
     Gamestate.registerEvents()

@@ -47,8 +47,8 @@ function game:enter(previous, settings)
     }
 
     self.data.navigation = pathfun.Navigation(self.data.navmesh)
-    self.data.camera.x = 215
-    self.data.camera.y = 200
+    self.data.camera.x = 875
+    self.data.camera.y = 875
 
     local map = self.data.map
     map:box2d_init(self.data.world)
@@ -349,7 +349,7 @@ function game:draw()
             end
         end
 
-        if mouseRegistry.mouseHover(self.data.mouseWorldX, self.data.mouseWorldY, box) or altToggle > 0 then
+        if not self.data.draggingSelectionBox and mouseRegistry.mouseHover(self.data.mouseWorldX, self.data.mouseWorldY, box) or altToggle > 0 then
             local shape = d.fixture:getShape()
 
             -- box
@@ -441,8 +441,8 @@ function game:draw()
         love.graphics.rectangle("fill", box.x, box.y, box.w, box.h)
         setColor(colors.selectionBoxOutline)
         love.graphics.rectangle("line", box.x, box.y, box.w, box.h)
-        love.graphics.setLineWidth(previousLineWidth)
 
+        love.graphics.setLineWidth(previousLineWidth)
         setColor(previousColor)
     end
 

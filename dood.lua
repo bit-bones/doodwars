@@ -123,7 +123,9 @@ local function stopMove(d)
     d.state = "idle"
 end
 
-function M.moveTo(d, g)
+function M.moveTo(d, g, dt)
+    d.repathTimer = math.max(0, (d.repathTimer or 0) - dt)
+
     if d.state ~= "pulling" then
         d.state = "walk"
     end
@@ -131,13 +133,20 @@ function M.moveTo(d, g)
     d.animation = d.animations.walk
 
     if not d.route or #d.route == 0 then
-        d.route = g.navigation:shortest_path(d.bodyX, d.bodyY, d.moveTargetX, d.moveTargetY)
-        if not d.route or #d.route == 0 then
+        local tx, ty = d.moveTargetX, d.moveTargetY
+        if d.repathTimer > 0 then
             d.body:setLinearVelocity(0, 0)
             return
         end
+        d.route = g.navigation:shortest_path(d.bodyX, d.bodyY, tx, ty)
+        if not d.route or #d.route == 0 then
+            d.repathTimer = 0.2
+            d.body:setLinearVelocity(0, 0)
+            return
+        end
+        d.repathTimer = 0
         d.routeIndex = 1
-        d.routeTargetX, d.routeTargetY = d.moveTargetX, d.moveTargetY
+        d.routeTargetX, d.routeTargetY = tx, ty
     end
 
     local waypoint = d.route[d.routeIndex]
@@ -194,6 +203,7 @@ function M.getSmallestValueIndex(distances)
 end
 
 function M.clearTargets(d)
+    d.scanCache = nil
     d.command = nil
     d.moveTargetX, d.moveTargetY = nil, nil
     d.route, d.routeIndex = nil, nil
@@ -396,16 +406,17 @@ function M.update(dt, g)
         end
 
         if not d.playerControlled and d.hurtTimer <= 0 and d.state ~= "downed" then
-            -- attack
             if d.attackTarget then
                 if d.attackTarget.state == "downed" or d.attackTarget.hp <= 0 then
                     M.clearTargets(d)
                     d.state = "idle"
                     d.animation = d.animations.idle
                     d.scanTimer = 0
-                    return
                 end
+            end
 
+            -- attack
+            if d.attackTarget then
                 local distance = love.physics.getDistance(d.fixture, d.attackTarget.fixture)
 
                 if distance <= d.collisionRadius * 2 then
@@ -437,7 +448,7 @@ function M.update(dt, g)
                         local difX = d.attackTarget.bodyX - d.routeTargetX
                         local difY = d.attackTarget.bodyY - d.routeTargetY
 
-                        local repathTolerance = 12
+                        local repathTolerance = 50
                         if difX * difX + difY * difY >= repathTolerance * repathTolerance then
                             d.route, d.routeIndex = nil, nil
                         end
@@ -454,10 +465,16 @@ function M.update(dt, g)
                     d.body:setLinearVelocity(0, 0)
 
                     -- scan for nearby enemies and nearest friendly shrine
-                    local shrineScan = M.shrineScan(d, g)
-                    local closestFriendlyShrine = shrineScan.closestFriendlyShrine
-                    local scan = M.doodScan(d.rescueTarget, g)
-                    local closestEnemy = scan.closestEnemy
+                    if not d.scanCache or d.scanCache.target ~= d.rescueTarget then
+                        d.scanCache = {
+                            target = d.rescueTarget,
+                            shrineScan = M.shrineScan(d, g),
+                            doodScan = M.doodScan(d.rescueTarget, g),
+                        }
+                    end
+
+                    local closestFriendlyShrine = d.scanCache.shrineScan.closestFriendlyShrine
+                    local closestEnemy = d.scanCache.doodScan.closestEnemy
 
                     if d.priority == "Default" then
                         if closestEnemy.index then
@@ -490,6 +507,7 @@ function M.update(dt, g)
                         M.healTarget(d, dt, d.rescueTarget)
                     end
                 else
+                    d.scanCache = nil
                     d.moveTargetX, d.moveTargetY = d.rescueTarget.bodyX, d.rescueTarget.bodyY
                 end
             end
@@ -509,11 +527,12 @@ function M.update(dt, g)
                         d.moveTargetY = 0 + d.collisionRadius * 2
                     end
                 end
-                M.moveTo(d, g)
+                M.moveTo(d, g, dt)
             end
 
             -- idle scanning
-            if d.command == nil and (d.state == "idle" or d.state == "walk") then
+            -- if d.command == nil and (d.state == "idle" or d.state == "walk") then
+            if d.command == nil and d.state == "idle" then
                 if d.state == "idle" then
                     M.clearTargets(d)
                 end
@@ -586,13 +605,8 @@ function M.update(dt, g)
         end
 
         -- check if inside selection box
-        if g.mouseStates.leftClickDown and g.selectionBox.w ~= nil or g.selectionBox.h ~= nil then
-            if insideRectangle(d.bodyX, d.bodyY, g.selectionBox) then
-                d.insideSelectionBox = true
-            else
-                d.insideSelectionBox = false
-            end
-        end
+        g.draggingSelectionBox = g.mouseStates.leftClickDown and g.selectionBox.w ~= nil or g.selectionBox.h ~= nil
+        d.insideSelectionBox = g.draggingSelectionBox and insideRectangle(d.bodyX, d.bodyY, g.selectionBox)
 
         -- animations
         local animateSpeed = 0.2
@@ -651,7 +665,7 @@ function M.newDood(x, y, color, g)
         wanderTimer = love.math.random(4,8),
         attackTimer = 0,
         hurtTimer = 0,
-        scanTimer = 0,
+        scanTimer = love.math.random(0, 0.5),
         color = color,
         index = #g.doods + 1,
         body = body,

@@ -1,28 +1,29 @@
+local mouse = require "mouse_map"
 local graphics = require "graphics"
 local container = graphics.container
-local title = graphics.title
-local screen = graphics.screen
 local fonts = graphics.fonts
-local fontHeights = graphics.fontHeights
 local colors = graphics.colors
 local getColor = graphics.getColor
 local setColor = graphics.setColor
 
 local M = {}
 
-function M.drawModal(titleText, buttons)
+function M.drawModal(titleText)
+    local rectangle = love.graphics.rectangle
     local previousColor = getColor()
     local titleY = container.y + 50
 
     setColor(colors.transparentGray)
-    love.graphics.rectangle("fill", container.x, container.y, container.w, container.h)
+    rectangle("fill", container.x, container.y, container.w, container.h, 10, 10)
     setColor(colors.white)
     love.graphics.setFont(fonts.slabsTitle)
     love.graphics.printf(titleText, container.x, titleY, container.w, "center")
     love.graphics.setFont(fonts.slabsButtons)
-    for i, button in ipairs(buttons) do
-        local offset = i * fontHeights.slabsButtons * 2
-        love.graphics.printf(button.label, container.x, screen.centerY + offset, container.w, "center")
+    for _, button in ipairs(graphics.buttons) do
+        if button.hovered then
+            rectangle("line", button.box.x, button.box.y, button.box.w, button.box.h, 10, 10)
+        end
+        love.graphics.printf(button.label, button.box.x, button.textY, button.box.w, "center")
     end
 
     setColor(previousColor)
