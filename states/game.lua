@@ -5,8 +5,6 @@ local cam = require "libs/hump/camera"
 local sti = require "libs/sti"
 local pathfun = require("libs/pathfun")
 
-local pause = require "states.pause"
-
 local dood = require("dood")
 local shrineRegistry = require("shrine")
 local key_map = require("key_map")
@@ -15,15 +13,17 @@ local mouse_map = require("mouse_map")
 local mouseRegistry = mouse_map.M
 
 local graphics = require "graphics"
+local screen = graphics.screen
 local colors = graphics.colors
 local getColor = graphics.getColor
 local setColor = graphics.setColor
+local fonts = graphics.fonts
 
 function game:enter(previous, settings)
     love.physics.setMeter(32)
 
     self.data = {
-        gameMode = settings.gameMode,
+        gamemode = settings.gamemode,
         map = sti("maps/"..settings.map.."/"..settings.map.."-tilemap.lua", {"box2d"}),
         navmesh =  require ("maps."..settings.map.."."..settings.map.."-navmesh"),
         world = love.physics.newWorld(0, 0, true),
@@ -67,54 +67,58 @@ function game:enter(previous, settings)
     }
 
     local propLayer = map.layers["depth-objects"]
-    for _, prop in ipairs(propLayer.objects) do
-        if prop.type == "trees" then
-            local x = propLayer.x + prop.x
-            local y = propLayer.y + prop.y
+    if propLayer then
+        for _, prop in ipairs(propLayer.objects) do
+            if prop.type == "trees" then
+                local x = propLayer.x + prop.x
+                local y = propLayer.y + prop.y
 
-            table.insert(self.data.props, {
-                x = x,
-                y = y,
-                tileX = math.floor(x / map.tilewidth) + 1,
-                tileY = math.floor(y / map.tileheight) + 1,
-            })
-        else
-            print("prop has no type")
+                table.insert(self.data.props, {
+                    x = x,
+                    y = y,
+                    tileX = math.floor(x / map.tilewidth) + 1,
+                    tileY = math.floor(y / map.tileheight) + 1,
+                })
+            else
+                print("prop has no type")
+            end
         end
     end
 
     local markerLayer = map.layers["objective-markers"]
-    for i, object in ipairs(markerLayer.objects) do
-        if object.type == "shrine" then
-            local x = markerLayer.x + object.x
-            local y = markerLayer.y + object.y
+    if markerLayer then
+        for i, object in ipairs(markerLayer.objects) do
+            if object.type == "shrine" then
+                local x = markerLayer.x + object.x
+                local y = markerLayer.y + object.y
 
-            local body = love.physics.newBody(self.data.world, x, y, "static")
-            body:setAwake(false)
-            body:setActive(false)
-            local shape = love.physics.newCircleShape(0, 0, 50)
-            local fixture = love.physics.newFixture(body, shape, 0)
+                local body = love.physics.newBody(self.data.world, x, y, "static")
+                body:setAwake(false)
+                body:setActive(false)
+                local shape = love.physics.newCircleShape(0, 0, 50)
+                local fixture = love.physics.newFixture(body, shape, 0)
 
-            table.insert(self.data.shrines, {
-                x = x,
-                y = y,
-                index = i,
-                tileX = math.floor(x / map.tilewidth) + 1,
-                tileY = math.floor(y / map.tileheight) + 1,
-                state = object.properties.state or "normal",
-                team = object.properties.color or "neutral",
-                body = body,
-                shape = shape,
-                fixture = fixture,
-            })
+                table.insert(self.data.shrines, {
+                    x = x,
+                    y = y,
+                    index = i,
+                    tileX = math.floor(x / map.tilewidth) + 1,
+                    tileY = math.floor(y / map.tileheight) + 1,
+                    state = object.properties.state or "normal",
+                    team = object.properties.color or "neutral",
+                    body = body,
+                    shape = shape,
+                    fixture = fixture,
+                })
 
-            table.insert(self.data.bases, {
-                x = x,
-                y = y,
-                index = i,
-                tileX = math.floor(x / map.tilewidth) + 1,
-                tileY = math.floor(y / map.tileheight) + 1,
-            })
+                table.insert(self.data.bases, {
+                    x = x,
+                    y = y,
+                    index = i,
+                    tileX = math.floor(x / map.tilewidth) + 1,
+                    tileY = math.floor(y / map.tileheight) + 1,
+                })
+            end
         end
     end
 
@@ -152,7 +156,7 @@ function game:enter(previous, settings)
             items[#items + 1] = {
                 sortY = currentProp.y + 20,
                 draw = function()
-                    graphics.setColor(1, 1, 1)
+                    setColor(colors.neutral)
                     drawProp(map.layers["trees"], currentProp)
                 end,
             }
@@ -164,7 +168,7 @@ function game:enter(previous, settings)
             items[#items + 1] = {
                 sortY = sortY,
                 draw = function()
-                    graphics.setColor(1, 1, 1)
+                    setColor(colors.neutral)
                     shrineRegistry.drawShrine(currentShrine, gameData)
                 end,
             }
@@ -176,7 +180,7 @@ function game:enter(previous, settings)
             items[#items + 1] = {
                 sortY = sortY,
                 draw = function()
-                    graphics.setColor(1, 1, 1)
+                    setColor(colors.neutral)
                     shrineRegistry.drawBase(currentBase, gameData)
                 end,
             }
@@ -190,9 +194,9 @@ function game:enter(previous, settings)
                 sortY = currentDood.y + spriteHeight * currentDood.scale,
                 draw = function()
                     if d.insideSelectionBox then
-                        graphics.setColor(.7, .7, .7)
+                        setColor(colors.dimNeutral)
                     else
-                        graphics.setColor(1, 1, 1)
+                        setColor(colors.neutral)
                     end
                     currentDood.animation[currentDood.dir]:draw(
                         currentDood.animation.image,
@@ -214,13 +218,15 @@ function game:enter(previous, settings)
             item.draw()
         end
 
-        graphics.setColor(1, 1, 1, 1)
+        setColor(colors.neutral)
     end
 
-    self.data.shrines[1].team = "blue"
-    self.data.shrines[3].team = "red"
-    self.data.shrines[7].team = "green"
-    self.data.shrines[9].team = "yellow"
+    if #self.data.shrines > 0 then
+        self.data.shrines[1].team = "blue"
+        self.data.shrines[3].team = "red"
+        self.data.shrines[7].team = "green"
+        self.data.shrines[9].team = "yellow"
+    end
 
     self.data.keyStates = key_map.states
     self.data.mouseStates = mouse_map.states
@@ -283,15 +289,12 @@ function game:update(dt)
 end
 
 function game:draw()
-    -- graphics.getScreen()
     local layouts = self.data.layouts
     local map = self.data.map
     local doodLayouts = layouts.doods
     local camera = self.data.camera
     local altToggle = self.data.keyStates.altToggle
-    local screen = graphics.screen
-    local fonts = graphics.fonts
-    local fontHeights = graphics.fontHeights
+
 
     local tx = screen.w / (2 * camera.scale) - camera.x
     local ty = screen.h / (2 * camera.scale) - camera.y

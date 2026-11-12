@@ -13,11 +13,18 @@ for i, font in pairs(M.fonts) do
 end
 
 M.colors = {
-    white =                 {1, 1, 1, 1},
-    transparentGray =       {0, 0, 0, 0.2},
-    selectionBoxOutline =   {0.1, 1, 0.1, 1},
-    selectionBoxFill =      {0.1, 1, 0.1, 0.1},
+    neutral =              {1, 1, 1, 1},
+    dimNeutral =           {0.7, 0.7, 0.7, 1},
+    transparentGray =      {0, 0, 0, 0.25},
+    selectionBoxOutline =  {0.1, 1, 0.1, 1},
+    selectionBoxFill =     {0.1, 1, 0.1, 0.1},
+    blue =                 {0.2, 0.35, 0.5},
+    red =                  {0.6, 0.2, 0.2},
+    yellow =               {0.55, 0.5, 0.1},
+    green =                {0.35, 0.55, 0.15},
 }
+
+M.backgrounds = {M.colors.blue, M.colors.red, M.colors.yellow, M.colors.green}
 
 M.screen = {}
 M.container = {}
@@ -26,10 +33,14 @@ local buttonPadding = 150
 local buttonSpacing = 20
 local buttonH = M.fontHeights.slabsButtons * 2
 
-function M.getLayout(buttons)
+function M.getScreen()
     M.screen.w, M.screen.h = love.graphics.getDimensions()
     M.screen.centerX = M.screen.w / 2
     M.screen.centerY = M.screen.h / 2
+end
+
+function M.getModalLayout(buttons)
+    M.getScreen()
 
     M.container.w = 800
     M.container.h = 800

@@ -2,7 +2,7 @@ local dood = require("dood")
 
 local M = {}
 
-local function setCursor(cursor)
+function M.setCursor(cursor)
     love.mouse.setCursor(love.mouse.getSystemCursor(cursor))
 end
 
@@ -128,12 +128,12 @@ local mouseMap = {
     [3] = { -- middle mouse button
         pressed = function (x, y, g)
             states.middleMouseDown = true
-            setCursor("sizeall")
+            M.setCursor("sizeall")
         end,
 
         released = function (x, y, g)
             states.middleMouseDown = false
-            setCursor("arrow")
+            M.setCursor("arrow")
 
         end,
     },

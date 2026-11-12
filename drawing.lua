@@ -5,17 +5,21 @@ local fonts = graphics.fonts
 local colors = graphics.colors
 local getColor = graphics.getColor
 local setColor = graphics.setColor
+local rectangle = love.graphics.rectangle
 
 local M = {}
 
-function M.drawModal(titleText)
-    local rectangle = love.graphics.rectangle
+function M.tabsModal(tabs)
+    
+end
+
+function M.modal(titleText)
     local previousColor = getColor()
     local titleY = container.y + 50
 
     setColor(colors.transparentGray)
     rectangle("fill", container.x, container.y, container.w, container.h, 10, 10)
-    setColor(colors.white)
+    setColor(colors.neutral)
     love.graphics.setFont(fonts.slabsTitle)
     love.graphics.printf(titleText, container.x, titleY, container.w, "center")
     love.graphics.setFont(fonts.slabsButtons)
