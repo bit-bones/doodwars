@@ -1,4 +1,4 @@
-local debug_helpers = {}
+local M = {}
 
 if os.getenv("LOCAL_LUA_DEBUGGER_VSCODE") == "1" then
     require("lldebugger").start()
@@ -27,4 +27,4 @@ function love.errorhandler(msg)
     end
 end
 
-return debug_helpers
+return M

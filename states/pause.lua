@@ -1,9 +1,8 @@
-local mouse = require "mouse_map"
+local mouse = require "mouse"
 local Gamestate = require "libs/hump/gamestate"
 local options = require "states.options"
-local drawing = require "drawing"
+local ui = require "ui"
 local graphics = require "graphics"
-local hoveredButton
 
 local pause = {}
 
@@ -35,48 +34,29 @@ end
 function pause:enter(previous)
     self.previous = previous
     graphics.getModalLayout(self.buttons)
-    mouse.M.setCursor("arrow")
+    mouse.setCursor("arrow")
 end
 
 function pause:draw()
     self.previous:draw()
     if self.drawModal then
-        drawing.modal("Pause")
+        ui.modal("Pause")
     end
 end
 
 function pause:keypressed(key)
     if key == "escape" then
-        mouse.M.setCursor("arrow")
+        mouse.setCursor("arrow")
         Gamestate.pop()
     end
 end
 
 function pause:mousemoved(x, y)
-    local hoveringAnyButton = false
-    for _, button in ipairs(graphics.buttons) do
-        button.hovered = mouse.M.mouseHover(x, y, button.box)
-        if button.hovered then
-            self.hoveredButton = button
-            hoveringAnyButton = true
-        end
-    end
-    if hoveringAnyButton then
-        mouse.M.setCursor("hand")
-    else
-        mouse.M.setCursor("arrow")
-        self.hoveredButton = nil
-    end
+    mouse.modalMousemoved(x, y, self)
 end
 
-function pause:mousepressed(x, y, inputButton)
-    mouse.M.setCursor("arrow")
-    if self.hoveredButton then
-        print("clicked "..self.hoveredButton.label)
-        if self.hoveredButton.fn then
-            self.hoveredButton.fn()
-        end
-    end
+function pause:mousepressed(x, y, mouseButton)
+    mouse.modalMousepressed(x, y, mouseButton, self)
 end
 
 function pause:resize()

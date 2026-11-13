@@ -1,4 +1,4 @@
-local mouse = require "mouse_map"
+local mouse = require "mouse"
 local graphics = require "graphics"
 local container = graphics.container
 local fonts = graphics.fonts

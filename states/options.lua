@@ -1,6 +1,6 @@
-local mouse = require "mouse_map"
+local mouse = require "mouse"
 local Gamestate = require "libs/hump/gamestate"
-local drawing = require "drawing"
+local ui = require "ui"
 local graphics = require "graphics"
 local colors = graphics.colors
 
@@ -20,7 +20,7 @@ end
 
 function options:draw()
     self.previous:draw()
-    drawing.modal("Options")
+    ui.modal("Options")
 end
 
 function options:keypressed(key)

@@ -42,19 +42,6 @@ local doodAnimations = {blue = {}, red = {}, green = {}, yellow = {}}
 local COLLISION_RADIUS_RATIO = 0.1
 local NAVIGATION_MARGIN = 2
 
-local DEFAULTS = {
-    SCALE = 2,
-    ATTACK_TIME = 2.0,
-    HURT_TIME = 0.3,
-    SCAN_RADIUS = 800,
-    SCAN_TIME = 2.0,
-    DAMAGE = 10,
-    HP = 100,
-    MOVE_SPEED = 75,
-    RESCUE_RATE = 5,
-    SAFE_RESCUE_DISTANCE = 800, -- temporary
-}
-
 local function pauseDeathAtEnd(animation)
     animation:pauseAtEnd()
 end
@@ -95,9 +82,22 @@ end
 
 local M = {}
 
+M.DEFAULTS = {
+    SCALE = 2,
+    ATTACK_TIME = 2.0,
+    HURT_TIME = 0.3,
+    SCAN_RADIUS = 600,
+    SCAN_TIME = 2.0,
+    DAMAGE = 10,
+    HP = 100,
+    MOVE_SPEED = 75,
+    RESCUE_RATE = 5,
+    SAFE_RESCUE_DISTANCE = 500,
+}
+
 function M.getNavigationClearance(color, scale)
     local spriteW = doodAnimations[color].idle.down:getDimensions()
-    return spriteW * (scale or DEFAULTS.SCALE) * COLLISION_RADIUS_RATIO + NAVIGATION_MARGIN
+    return spriteW * (scale or M.DEFAULTS.SCALE) * COLLISION_RADIUS_RATIO + NAVIGATION_MARGIN
 end
 
 local function setDirection(difX, difY, d)
@@ -186,7 +186,7 @@ function M.moveTo(d, g, dt)
         return
     end
 
-    d.body:setLinearVelocity(difX / distance * DEFAULTS.MOVE_SPEED,difY / distance * DEFAULTS.MOVE_SPEED)
+    d.body:setLinearVelocity(difX / distance * M.DEFAULTS.MOVE_SPEED,difY / distance * M.DEFAULTS.MOVE_SPEED)
 
     setDirection(difX, difY, d)
 end
@@ -238,7 +238,7 @@ end
 
 function M.healTarget(d, dt, target)
     d.state = "heal"
-    local rescueRate = d.rescueRate or DEFAULTS.RESCUE_RATE
+    local rescueRate = d.rescueRate or M.DEFAULTS.RESCUE_RATE
     target.hp = target.hp + rescueRate * dt
 
     if target.hp >= target.maxHp then
@@ -336,14 +336,14 @@ function M.doodScan(d, g)
 
         if dd ~= d and dd.color ~= d.color and dd.hp > 0 and dd.state ~= "downed" then
             local dis = love.physics.getDistance(d.fixture, dd.fixture)
-            if dis <= DEFAULTS.SCAN_RADIUS then
+            if dis <= M.DEFAULTS.SCAN_RADIUS then
                 enemyDistances[ii] = dis
             end
         end
 
         if dd ~= d and dd.color == d.color and dd.state == "downed" and dd.puller == nil then
             local dis = love.physics.getDistance(d.fixture, dd.fixture)
-            if dis <= DEFAULTS.SCAN_RADIUS then
+            if dis <= M.DEFAULTS.SCAN_RADIUS then
                 downFriendlyDistances[ii] = dis
             end
         end
@@ -367,6 +367,24 @@ function M.doodScan(d, g)
             dis = closestDownFriendlyDis,
             index = closestDownFriendlyIndex,
         },
+    }
+end
+
+function M.getDoodBox(d)
+    local fw, fh = d.animation[d.dir]:getDimensions() -- get animation frame dimensions
+    local sw =  fw * d.scale -- multiply by dood scale to get current sprite dimensions
+    local sh = fh * d.scale
+    local bw = sw * 0.4      -- multiply by shrink factor to get box dimensions
+    local bh = sh * 0.5
+    local bx = d.x + (sw - bw) / 2
+    local by = d.y + (sh - bh) / 2
+    d.box = {
+        x = bx,
+        y = by,
+        w = bw,
+        h = bh,
+        centerX = bx + bw / 2,
+        centerY = by + bh / 2,
     }
 end
 
@@ -431,10 +449,10 @@ function M.update(dt, g)
                         local difY = d.attackTarget.bodyY - d.bodyY
 
                         setDirection(difX, difY, d)
-                        d.attackTimer = DEFAULTS.ATTACK_TIME
+                        d.attackTimer = M.DEFAULTS.ATTACK_TIME
                         d.attackTarget.hp = d.attackTarget.hp - d.damage
                         d.attackTarget.animation = d.attackTarget.animations.hurt
-                        d.attackTarget.hurtTimer = DEFAULTS.HURT_TIME
+                        d.attackTarget.hurtTimer = M.DEFAULTS.HURT_TIME
                         if d.command == nil then
                             d.attackTarget.attackTarget = d
                         end
@@ -487,7 +505,7 @@ function M.update(dt, g)
                         local closestFriendlyShrineDis = closestFriendlyShrine.dis
                         local closestFriendlyShrineRadius = g.shrines[closestFriendlyShrine.index].shape:getRadius()
 
-                        if not closestEnemy.index or closestEnemy.dis > DEFAULTS.SAFE_RESCUE_DISTANCE or closestFriendlyShrineDis <= closestFriendlyShrineRadius then
+                        if not closestEnemy.index or closestEnemy.dis > M.DEFAULTS.SAFE_RESCUE_DISTANCE or closestFriendlyShrineDis <= closestFriendlyShrineRadius then
                             M.healTarget(d, dt, d.rescueTarget)
 
                         elseif not d.rescueTarget.joint and not d.rescueTarget.puller then
@@ -531,15 +549,15 @@ function M.update(dt, g)
             end
 
             -- idle scanning
-            -- if d.command == nil and (d.state == "idle" or d.state == "walk") then
-            if d.command == nil and d.state == "idle" then
+            if d.command == nil and (d.state == "idle" or d.state == "walk") then
+            -- if d.command == nil and d.state == "idle" then
                 if d.state == "idle" then
                     M.clearTargets(d)
                 end
 
                 d.scanTimer = d.scanTimer - dt
                 if d.scanTimer <= 0 then
-                    d.scanTimer = DEFAULTS.SCAN_TIME
+                    d.scanTimer = M.DEFAULTS.SCAN_TIME
 
                     local scan = M.doodScan(d, g)
                     local closestEnemy = {
@@ -615,6 +633,8 @@ function M.update(dt, g)
         d.bodyX, d.bodyY = d.body:getPosition()
         d.x = d.bodyX - d.spriteW * d.scale / 2
         d.y = d.bodyY - d.spriteH * d.scale / 2 - d.collisionOffsetY
+
+        M.getDoodBox(d)
     end
 end
 
@@ -626,7 +646,7 @@ function M.newDood(x, y, color, g)
         death = cloneAnimationSet(doodAnimations[color].death),
     }
 
-    local scale = DEFAULTS.SCALE
+    local scale = M.DEFAULTS.SCALE
     local spriteW, spriteH = animations.idle.down:getDimensions()
     local spriteX, spriteY = x - spriteW / 2 * scale, y - spriteH / 2 * scale
 
@@ -646,10 +666,10 @@ function M.newDood(x, y, color, g)
     fixture:setFriction(0)
 
     local dood = {
-        hp = DEFAULTS.HP,
-        maxHp = DEFAULTS.HP,
-        damage = DEFAULTS.DAMAGE,
-        moveSpeed = DEFAULTS.MOVE_SPEED,
+        hp = M.DEFAULTS.HP,
+        maxHp = M.DEFAULTS.HP,
+        damage = M.DEFAULTS.DAMAGE,
+        moveSpeed = M.DEFAULTS.MOVE_SPEED,
         priority = "Medic",
         state = "idle",
         dir = "down",
@@ -681,11 +701,8 @@ function M.newDood(x, y, color, g)
         shape = shape,
         fixture = fixture,
     }
-
+    M.getDoodBox(dood)
     table.insert(g.doods, dood)
 end
 
-return {
-    M = M,
-    DEFAULTS = DEFAULTS,
-}
+return M

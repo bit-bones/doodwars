@@ -1,9 +1,9 @@
-local mouse = require "mouse_map"
+local mouse = require "mouse"
 local sti = require "libs/sti"
 local Gamestate = require "libs/hump/gamestate"
 local options = require "states.options"
 local game = require "states.game"
-local drawing = require "drawing"
+local ui = require "ui"
 local graphics = require "graphics"
 local colors = graphics.colors
 local screen = graphics.screen
@@ -13,7 +13,6 @@ local setColor = graphics.setColor
 local menu = {}
 
 function menu:init()
-    self.backgroundColor = love.math.random(4) -- color background
     self.drawModal = true
 
     self.maps = {}
@@ -67,6 +66,7 @@ function menu:init()
 end
 
 function menu:enter()
+    self.backgroundColor = love.math.random(4) -- color background
     graphics.getModalLayout(self.buttons)
     self.title = "Dood Wars"
 end
@@ -93,7 +93,7 @@ function menu:draw()
     -- self.background:draw() -- map background
     self.background() -- color background
     if self.drawModal then
-        drawing.modal(self.title)
+        ui.modal(self.title)
     end
     setColor(previousColor)
 end
@@ -109,30 +109,11 @@ function menu:keypressed(key)
 end
 
 function menu:mousemoved(x, y)
-    local hoveringAnyButton = false
-    for _, button in ipairs(graphics.buttons) do
-        button.hovered = mouse.M.mouseHover(x, y, button.box)
-        if button.hovered then
-            self.hoveredButton = button
-            hoveringAnyButton = true
-        end
-    end
-    if hoveringAnyButton then
-        mouse.M.setCursor("hand")
-    else
-        mouse.M.setCursor("arrow")
-        self.hoveredButton = nil
-    end
+    mouse.modalMousemoved(x, y, self)
 end
 
-function menu:mousepressed(x, y, inputButton)
-    mouse.M.setCursor("arrow")
-    if self.hoveredButton then
-        print("clicked "..self.hoveredButton.label)
-        if self.hoveredButton.fn then
-            self.hoveredButton.fn()
-        end
-    end
+function menu:mousepressed(x, y, mouseButton)
+    mouse.modalMousepressed(x, y, mouseButton, self)
 end
 
 function menu:resize()

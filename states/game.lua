@@ -7,10 +7,8 @@ local pathfun = require("libs/pathfun")
 
 local dood = require("dood")
 local shrineRegistry = require("shrine")
-local key_map = require("key_map")
-local keyRegistry = key_map.M
-local mouse_map = require("mouse_map")
-local mouseRegistry = mouse_map.M
+local keyboard = require("keyboard")
+local mouse = require("mouse")
 
 local graphics = require "graphics"
 local screen = graphics.screen
@@ -228,73 +226,69 @@ function game:enter(previous, settings)
         self.data.shrines[9].team = "yellow"
     end
 
-    self.data.keyStates = key_map.states
-    self.data.mouseStates = mouse_map.states
+    self.data.keyStates = keyboard.states
+    self.data.mouseStates = mouse.states
 end
 
-function game:getLayouts()
-    local topBarY = 20
-    local topBarSections = {
-        {label = "Doods"},
+-- function game:getLayouts()
+--     local topBarY = 20
+--     local topBarSections = {
+--         {label = "Doods"},
 
-    }
+--     }
 
-    local doodLayouts = {}
+--     local doodLayouts = {}
 
-    for i, d in ipairs(self.data.doods) do
-        local fw, fh = d.animation[d.dir]:getDimensions() -- get animation frame dimensions
-        local sw =  fw * d.scale -- multiply by dood scale to get current sprite dimensions
-        local sh = fh * d.scale
-        local bw = sw * 0.4      -- multiply by shrink factor to get box dimensions
-        local bh = sh * 0.5
-        local bx = d.x + (sw - bw) / 2
-        local by = d.y + (sh - bh) / 2
+--     for i, d in ipairs(self.data.doods) do
+--         local fw, fh = d.animation[d.dir]:getDimensions() -- get animation frame dimensions
+--         local sw =  fw * d.scale -- multiply by dood scale to get current sprite dimensions
+--         local sh = fh * d.scale
+--         local bw = sw * 0.4      -- multiply by shrink factor to get box dimensions
+--         local bh = sh * 0.5
+--         local bx = d.x + (sw - bw) / 2
+--         local by = d.y + (sh - bh) / 2
 
-        doodLayouts[i] = {
-            box = {
-                x = bx,
-                y = by,
-                w = bw,
-                h = bh,
-                centerX = bx + bw / 2,
-                centerY = by + bh / 2,
-            },
+--         doodLayouts[i] = {
+--             box = {
+--                 x = bx,
+--                 y = by,
+--                 w = bw,
+--                 h = bh,
+--                 centerX = bx + bw / 2,
+--                 centerY = by + bh / 2,
+--             },
 
-            contextMenu = {
-                x = bx + bw,
-                y = by,
-                w = 30,
-                h = 20,
-            }
-        }
-    end
+--             contextMenu = {
+--                 x = bx + bw,
+--                 y = by,
+--                 w = 30,
+--                 h = 20,
+--             }
+--         }
+--     end
 
-    return {
-        doods = doodLayouts,
-    }
-end
+--     return {
+--         doods = doodLayouts,
+--     }
+-- end
 
 function game:update(dt)
-    self.data.layouts = self:getLayouts()
     self.data.world:update(dt)
     self.data.map:update(dt)
-    dood.M.update(dt, self.data)
-    keyRegistry.update(dt, self.data)
+    dood.update(dt, self.data)
+    keyboard.update(dt, self.data)
 
-    local doodLayouts = self.data.layouts.doods
-    if self.data.cameraLocked and self.data.controlledDood then
-        local controlledDoodIndex = self.data.controlledDood and self.data.controlledDood.index
-        self.data.camera:lockPosition(doodLayouts[controlledDoodIndex].box.centerX, doodLayouts[controlledDoodIndex].box.centerY)
+    local controlledDood = self.data.controlledDood
+    if self.data.cameraLocked and controlledDood then
+        local box = controlledDood.box
+        self.data.camera:lockPosition(box.centerX, box.centerY)
     end
 end
 
 function game:draw()
-    local layouts = self.data.layouts
     local map = self.data.map
-    local doodLayouts = layouts.doods
     local camera = self.data.camera
     local altToggle = self.data.keyStates.altToggle
-
 
     local tx = screen.w / (2 * camera.scale) - camera.x
     local ty = screen.h / (2 * camera.scale) - camera.y
@@ -338,7 +332,7 @@ function game:draw()
 
     -- doods
     for i, d in pairs(self.data.doods) do
-        local box = doodLayouts[i].box
+        local box = d.box
         local boxColor = {1, 1, 1}
 
         -- set box color
@@ -352,7 +346,7 @@ function game:draw()
             end
         end
 
-        if not self.data.draggingSelectionBox and mouseRegistry.mouseHover(self.data.mouseWorldX, self.data.mouseWorldY, box) or altToggle > 0 then
+        if not self.data.draggingSelectionBox and mouse.mouseHover(self.data.mouseWorldX, self.data.mouseWorldY, box) or altToggle > 0 then
             local shape = d.fixture:getShape()
 
             -- box
@@ -435,7 +429,7 @@ function game:draw()
 
     -- selection box
     local box = self.data.selectionBox
-    if mouse_map.states.leftClickDown and box.w and box.h then
+    if self.data.mouseStates.leftClickDown and box.w and box.h then
         local previousLineWidth = love.graphics.getLineWidth()
         local previousColor = getColor()
 
@@ -452,8 +446,9 @@ function game:draw()
    self.data.camera:detach()
 
     -- hud
+    local controlledDood = self.data.controlledDood
+    local controlledDoodIndex = controlledDood and controlledDood.index or "none"
     love.graphics.setFont(fonts.debugHud)
-    local controlledDoodIndex = self.data.controlledDood and self.data.controlledDood.index or "none"
     love.graphics.print("\nmouseX: "..math.floor(self.data.mouseWorldX)..
                         "\nmouseY: "..math.floor(self.data.mouseWorldY)..
                         -- "\nzoom scale: "..self.data.camera.scale..
@@ -465,23 +460,23 @@ end
 
 -- input controls
 function game:keypressed(key)
-    keyRegistry.keypressed(key, self.data)
+    keyboard.keypressed(key, self.data)
 end
 
 function game:keyreleased(key)
-    keyRegistry.keyreleased(key, self.data)
+    keyboard.keyreleased(key, self.data)
 end
 
 function game:mousepressed(x, y, button)
-    mouseRegistry.mousepressed(x, y, button, self.data)
+    mouse.mousepressed(x, y, button, self.data)
 end
 
 function game:mousereleased(x, y, button)
-    mouseRegistry.mousereleased(x, y, button, self.data)
+    mouse.mousereleased(x, y, button, self.data)
 end
 
 function game:mousemoved(x, y, dx, dy)
-    mouseRegistry.mousemoved(x, y, dx, dy, self.data)
+    mouse.mousemoved(x, y, dx, dy, self.data)
 end
 
 function game:wheelmoved(x, y)

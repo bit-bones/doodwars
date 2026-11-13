@@ -1,4 +1,5 @@
-local dood = require("dood")
+local dood = require "dood"
+local graphics = require "graphics"
 
 local M = {}
 
@@ -15,7 +16,7 @@ end
 
 local states = {}
 
-local mouseMap = {
+M.mouseMap = {
 --==================================================--
     [1] = { -- left click
         pressed = function (x, y, g)
@@ -24,7 +25,7 @@ local mouseMap = {
             -- check if a dood was clicked
             local clickedDood
             for i, d in ipairs(g.doods) do
-                local box =  g.layouts.doods[i].box
+                local box =  d.box
 
                 if M.mouseHover(wx, wy, box) then
                     clickedDood = d
@@ -96,7 +97,7 @@ local mouseMap = {
             local clickedDood
 
             for i, d in ipairs(g.doods) do
-                local box =  g.layouts.doods[i].box
+                local box =  d.box
                 if M.mouseHover(wx, wy, box) then
                     clickedDood = d
                     break
@@ -107,14 +108,14 @@ local mouseMap = {
                 if d.selected and d.state ~= "downed" then
                     if clickedDood then
                         if clickedDood.color ~= d.color then
-                            dood.M.setAttackTarget(d, g, clickedDood.index)
+                            dood.setAttackTarget(d, g, clickedDood.index)
                             d.command = "attack"
                         elseif clickedDood ~= d and clickedDood.color == d.color and clickedDood.state == "downed" and clickedDood.puller == nil then
                             d.rescueTarget = clickedDood
                             d.command = "rescue"
                         end
                     else
-                        dood.M.clearTargets(d)
+                        dood.clearTargets(d)
                         d.route = nil
                         d.moveTargetX = wx
                         d.moveTargetY = wy
@@ -142,17 +143,16 @@ local mouseMap = {
 
 
 
--- button pressed
+-- game
 function M.mousepressed(x, y, button, game)
-    local action = mouseMap[button]
+    local action = M.mouseMap[button]
     if action and action.pressed then
         action.pressed(x, y, game)
     end
 end
 
--- button released
 function M.mousereleased(x, y, button, game)
-    local action = mouseMap[button]
+    local action = M.mouseMap[button]
     if action and action.released then
         action.released(x, y, game)
     end
@@ -175,8 +175,34 @@ function M.mousemoved(x, y, dx, dy, g)
     end
 end
 
-return {
-    M = M,
-    states = states,
-    mouseMap = mouseMap,
-}
+-- modal
+function M.modalMousepressed(x, y, mouseButton, state)
+    if mouseButton ~= 1 then return end
+    M.setCursor("arrow")
+    if state.hoveredButton then
+        if state.hoveredButton.fn then
+            state.hoveredButton.fn()
+        end
+    end
+end
+
+function M.modalMousemoved(x, y, state)
+    local hoveringAnyButton = false
+    for _, button in ipairs(graphics.buttons) do
+        button.hovered = M.mouseHover(x, y, button.box)
+        if button.hovered then
+            state.hoveredButton = button
+            hoveringAnyButton = true
+        end
+    end
+    if hoveringAnyButton then
+        M.setCursor("hand")
+    else
+        M.setCursor("arrow")
+        state.hoveredButton = nil
+    end
+end
+
+M.states = states
+
+return M

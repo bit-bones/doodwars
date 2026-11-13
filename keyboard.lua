@@ -2,12 +2,13 @@ local Gamestate = require "libs/hump/gamestate"
 local pause = require "states.pause"
 local dood = require("dood")
 
+local M = {}
+
 local states = {
     altToggle = 0,
 }
 
-
-local keyMap = {
+M.keymap = {
 --==================================================--
     t = {
         pressed = function (g)
@@ -33,7 +34,7 @@ local keyMap = {
             elseif love.keyboard.isDown("y") then c = "yellow"
             -- elseif love.keyboard.isDown("n") then c = "neutral"
             end
-            if c then dood.M.newDood(g.mouseWorldX, g.mouseWorldY, c, g) end
+            if c then dood.newDood(g.mouseWorldX, g.mouseWorldY, c, g) end
         end,
     },
 --==================================================--
@@ -56,21 +57,16 @@ local keyMap = {
     escape = {
         pressed = function (g)
             Gamestate.push(pause)
-            -- love.event.quit()
         end
     },
 --==================================================--
 }
-
-
-local M = {}
 
 -- update
 function M.update(dt, g)
     -- WASD
     local moveX = (love.keyboard.isDown("d") and 1 or 0) - (love.keyboard.isDown("a") and 1 or 0)
     local moveY = (love.keyboard.isDown("s") and 1 or 0) - (love.keyboard.isDown("w") and 1 or 0)
-
     local d = g.controlledDood
 
     if d and d.state ~= "downed" and d.hurtTimer <= 0 then
@@ -79,7 +75,6 @@ function M.update(dt, g)
         if length > 0 then
             moveX = moveX / length
             moveY = moveY / length
-
             d.body:setLinearVelocity(moveX * dood.DEFAULTS.MOVE_SPEED, moveY * dood.DEFAULTS.MOVE_SPEED)
             d.state = "walk"
             d.animation = d.animations.walk
@@ -105,7 +100,7 @@ end
 
 -- key pressed
 function M.keypressed(key, g)
-    local action = keyMap[key]
+    local action = M.keymap[key]
     if action and action.pressed then
         action.pressed(g)
     end
@@ -113,14 +108,12 @@ end
 
 -- key released
 function M.keyreleased(key, g)
-    local action = keyMap[key]
+    local action = M.keymap[key]
     if action and action.released then
         action.released(g)
     end
 end
 
-return {
-    M = M,
-    states = states,
-    keyMap = keyMap,
-}
+M.states = states
+
+return M

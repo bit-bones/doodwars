@@ -61,10 +61,10 @@ function M.drawShrine(shrine, g)
 
     local bodyLayer = bodyLayers[shrine.state] or bodyLayers.normal
     local symbolLayer = symbolLayers[shrine.state] or symbolLayers.normal
-    -- local bodyTint = colors[shrine.team] or colors.neutral
+    local bodyTint = bodyColors[shrine.team] or colors.neutral
     local symbolTint = symbolColors[shrine.team] or colors.neutral
 
-    drawTilesNearShrine(bodyLayer, shrine, bodyColors.neutral, g.map)
+    drawTilesNearShrine(bodyLayer, shrine, bodyTint, g.map)
     drawTilesNearShrine(symbolLayer, shrine, symbolTint, g.map)
 end
 
