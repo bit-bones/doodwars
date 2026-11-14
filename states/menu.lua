@@ -120,4 +120,9 @@ function menu:resize()
     graphics.getModalLayout()
 end
 
+function menu:leave()
+    mouse.setCursor("arrow")
+    graphics.buttons = nil
+end
+
 return menu

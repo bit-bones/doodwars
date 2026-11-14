@@ -33,8 +33,9 @@ end
 
 function pause:enter(previous)
     self.previous = previous
+    local x, y = love.mouse.getPosition()
+    mouse.resolveModalButtonHover(x, y, self)
     graphics.getModalLayout(self.buttons)
-    mouse.setCursor("arrow")
 end
 
 function pause:draw()
@@ -46,7 +47,6 @@ end
 
 function pause:keypressed(key)
     if key == "escape" then
-        mouse.setCursor("arrow")
         Gamestate.pop()
     end
 end
@@ -61,6 +61,11 @@ end
 
 function pause:resize()
     graphics.getModalLayout()
+end
+
+function pause:leave()
+    mouse.setCursor("arrow")
+    graphics.buttons = nil
 end
 
 return pause

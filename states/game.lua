@@ -4,6 +4,7 @@ local Gamestate = require "libs/hump/gamestate"
 local cam = require "libs/hump/camera"
 local sti = require "libs/sti"
 local pathfun = require("libs/pathfun")
+local ui      = require("ui")
 
 local dood = require("dood")
 local shrineRegistry = require("shrine")
@@ -18,6 +19,7 @@ local setColor = graphics.setColor
 local fonts = graphics.fonts
 
 function game:enter(previous, settings)
+    graphics.getinfoBarLayout()
     love.physics.setMeter(32)
 
     self.data = {
@@ -187,9 +189,10 @@ function game:enter(previous, settings)
         for _, d in ipairs(gameData.doods) do
             local currentDood = d
             local spriteHeight = currentDood.animation[currentDood.dir]:getDimensions()
+            currentDood.sortY = currentDood.y + spriteHeight * currentDood.scale
 
             items[#items + 1] = {
-                sortY = currentDood.y + spriteHeight * currentDood.scale,
+                sortY = currentDood.sortY,
                 draw = function()
                     if d.insideSelectionBox then
                         setColor(colors.dimNeutral)
@@ -229,48 +232,6 @@ function game:enter(previous, settings)
     self.data.keyStates = keyboard.states
     self.data.mouseStates = mouse.states
 end
-
--- function game:getLayouts()
---     local topBarY = 20
---     local topBarSections = {
---         {label = "Doods"},
-
---     }
-
---     local doodLayouts = {}
-
---     for i, d in ipairs(self.data.doods) do
---         local fw, fh = d.animation[d.dir]:getDimensions() -- get animation frame dimensions
---         local sw =  fw * d.scale -- multiply by dood scale to get current sprite dimensions
---         local sh = fh * d.scale
---         local bw = sw * 0.4      -- multiply by shrink factor to get box dimensions
---         local bh = sh * 0.5
---         local bx = d.x + (sw - bw) / 2
---         local by = d.y + (sh - bh) / 2
-
---         doodLayouts[i] = {
---             box = {
---                 x = bx,
---                 y = by,
---                 w = bw,
---                 h = bh,
---                 centerX = bx + bw / 2,
---                 centerY = by + bh / 2,
---             },
-
---             contextMenu = {
---                 x = bx + bw,
---                 y = by,
---                 w = 30,
---                 h = 20,
---             }
---         }
---     end
-
---     return {
---         doods = doodLayouts,
---     }
--- end
 
 function game:update(dt)
     self.data.world:update(dt)
@@ -333,74 +294,85 @@ function game:draw()
     -- doods
     for i, d in pairs(self.data.doods) do
         local box = d.box
-        local boxColor = {1, 1, 1}
+        local attackerSelected = false
+        d.boxColor = colors.neutral
 
         -- set box color
-        if d.playerControlled then boxColor = {0.3, 1, 0.3} -- green
-        elseif d.selected then boxColor = {0.5, 0.75, 1}     -- blue
+        if d.playerControlled then d.boxColor = {0, 0.9, 1}     -- blue
+        elseif d.selected then d.boxColor = {0.1, 1, 0.1} -- green
         elseif d.attackers then
             for _, attacker in pairs(d.attackers) do
                 if attacker.selected then
-                    boxColor = {1, 0.3, 0.3}                -- red
+                    attackerSelected = true
+                    d.boxColor = {1, 0.3, 0.3}                -- red
                 end
             end
         end
 
-        if not self.data.draggingSelectionBox and mouse.mouseHover(self.data.mouseWorldX, self.data.mouseWorldY, box) or altToggle > 0 then
-            local shape = d.fixture:getShape()
-
-            -- box
+        -- arrow
+        if d.selected or attackerSelected or d.playerControlled then
             local pc = graphics.getColor()
-            graphics.setColor(boxColor)
-            love.graphics.rectangle("line", box.x, box.y, box.w, box.h)
+            graphics.setColor(d.boxColor)
+            love.graphics.polygon("fill", d.arrow)
             graphics.setColor(pc)
+        end
 
-            -- debug info
-            if altToggle == 3 or altToggle == 2 and d.selected then
-                local rescueTarget = d.rescueTarget and d.rescueTarget.index
-                local attackTarget = d.attackTarget and d.attackTarget.index
-                local puller = d.puller and d.puller.index
-                local hasJoint = (d.joint ~= nil)
-
-                local attackerCount = 0
-                if d.attackers then
-                    for _, _ in pairs(d.attackers) do
-                        attackerCount = attackerCount + 1
-                    end
-                end
-
-                if d.moveTargetX and d.moveTargetY then
-                    love.graphics.circle("fill", d.moveTargetX, d.moveTargetY, 5)
-                end
-
-                love.graphics.setFont(fonts.debugWorld)
-                love.graphics.print("\nindex: "..d.index..
-                                    "\nhealth: "..math.floor(d.hp)..
-                                    "\nx: "..math.floor(d.bodyX)..
-                                    "\ny: "..math.floor(d.bodyY)..
-                                    "\ncommand: "..(d.command or "none")..
-                                    "\nstate: "..d.state..
-                                    "\ndir: "..d.dir..
-                                    "\ncolor: "..d.color..
-                                    "\nselected: "..tostring(d.selected)..
-                                    "\ncontrolled: "..tostring(d.playerControlled)..
-                                    "\nattackers: "..(attackerCount or "none")..
-                                    "\nattack target: "..(attackTarget or "none")..
-                                    "\nrescue target: "..(rescueTarget or "none")..
-                                    "\npuller: "..(puller or "none")..
-                                    "\nhas joint: "..tostring(hasJoint)..
-                                    "\nwander timer: "..string.format("%.1f", tostring(d.wanderTimer))..
-                                    "\nscan timer: "..string.format("%.1f", tostring(d.scanTimer))..
-                                    "\nhurt timer: "..string.format("%.1f", tostring(d.hurtTimer))..
-                                    "\nattack timer: "..string.format("%.1f", tostring(d.attackTimer))
-                                    ,box.x + box.w, box.y + box.h)
-
+        -- debug info
+        if altToggle == 3 or altToggle == 2 and d.selected then
+            if d.moveTargetX and d.moveTargetY then
+                local pc = graphics.getColor()
+                graphics.setColor(d.boxColor)
+                love.graphics.circle("fill", d.moveTargetX, d.moveTargetY, 3)
+                graphics.setColor(pc)
             end
+
+            local rescueTarget = d.rescueTarget and d.rescueTarget.index
+            local attackTarget = d.attackTarget and d.attackTarget.index
+            local puller = d.puller and d.puller.index
+            local hasJoint = (d.joint ~= nil)
+
+            local attackerCount = 0
+            if d.attackers then
+                for _, _ in pairs(d.attackers) do
+                    attackerCount = attackerCount + 1
+                end
+            end
+
+            love.graphics.setFont(fonts.debugWorld)
+            love.graphics.print("\nindex: "..d.index..
+                                "\nhealth: "..math.floor(d.hp)..
+                                "\nx: "..math.floor(d.bodyX)..
+                                "\ny: "..math.floor(d.bodyY)..
+                                "\ncommand: "..(d.command or "none")..
+                                "\nstate: "..d.state..
+                                "\ndir: "..d.dir..
+                                "\ncolor: "..d.color..
+                                "\nselected: "..tostring(d.selected)..
+                                "\ncontrolled: "..tostring(d.playerControlled)..
+                                "\nattackers: "..(attackerCount or "none")..
+                                "\nattack target: "..(attackTarget or "none")..
+                                "\nrescue target: "..(rescueTarget or "none")..
+                                "\npuller: "..(puller or "none")..
+                                "\nhas joint: "..tostring(hasJoint)..
+                                "\nwander timer: "..string.format("%.1f", tostring(d.wanderTimer))..
+                                "\nscan timer: "..string.format("%.1f", tostring(d.scanTimer))..
+                                "\nhurt timer: "..string.format("%.1f", tostring(d.hurtTimer))..
+                                "\nattack timer: "..string.format("%.1f", tostring(d.attackTimer))
+                                ,box.x + box.w, box.y + box.h)
 
             if altToggle >= 4 then
-                love.graphics.circle("line", d.bodyX, d.bodyY, shape:getRadius())
+                love.graphics.circle("line", d.bodyX, d.bodyY, d.shape:getRadius())
             end
         end
+    end
+
+    -- box
+    if self.data.hoveredDood and not self.data.draggingSelectionBox then
+        local d = self.data.hoveredDood
+        local pc = graphics.getColor()
+        graphics.setColor(d.boxColor)
+        love.graphics.rectangle("line", d.box.x, d.box.y, d.box.w, d.box.h)
+        graphics.setColor(pc)
     end
 
     -- navmesh
@@ -446,6 +418,8 @@ function game:draw()
    self.data.camera:detach()
 
     -- hud
+    ui.infoBar(game.data)
+
     local controlledDood = self.data.controlledDood
     local controlledDoodIndex = controlledDood and controlledDood.index or "none"
     love.graphics.setFont(fonts.debugHud)
@@ -456,6 +430,10 @@ function game:draw()
                         "\nalt toggle: "..altToggle
                         ,10, 30)
 
+end
+
+function game:resize()
+    graphics.getinfoBarLayout()
 end
 
 -- input controls

@@ -24,22 +24,19 @@ M.mouseMap = {
 
             -- check if a dood was clicked
             local clickedDood
-            for i, d in ipairs(g.doods) do
-                local box =  d.box
-
-                if M.mouseHover(wx, wy, box) then
-                    clickedDood = d
-                    d.wanderTimer = 10
-                    break
-                end
+            if g.hoveredDood then
+                clickedDood = g.hoveredDood
             end
+
             -- toggle player control
             if love.keyboard.isDown("lctrl") then
                 if clickedDood and clickedDood.state ~= "downed" then
+                    clickedDood.command = nil
                     clickedDood.moveTargetX = nil
                     clickedDood.moveTargetY = nil
 
                     if clickedDood == g.controlledDood then
+                        clickedDood.scanTimer = 0
                         g.controlledDood = nil
                     else
                         g.controlledDood = clickedDood
@@ -95,16 +92,11 @@ M.mouseMap = {
         released = function (x, y, g)
             local wx, wy = g.mouseWorldX, g.mouseWorldY
             local clickedDood
-
-            for i, d in ipairs(g.doods) do
-                local box =  d.box
-                if M.mouseHover(wx, wy, box) then
-                    clickedDood = d
-                    break
-                end
+            if g.hoveredDood then
+                clickedDood = g.hoveredDood
             end
 
-            for i, d in ipairs(g.doods) do
+            for _, d in ipairs(g.doods) do
                 if d.selected and d.state ~= "downed" then
                     if clickedDood then
                         if clickedDood.color ~= d.color then
@@ -160,6 +152,8 @@ end
 
 function M.mousemoved(x, y, dx, dy, g)
     g.mouseWorldX, g.mouseWorldY = g.camera:worldCoords(x, y)
+    g.hoveredDood = nil
+    dood.getHoveredDood(g)
 
     -- selection box
     if states.leftClickDown then
@@ -176,17 +170,7 @@ function M.mousemoved(x, y, dx, dy, g)
 end
 
 -- modal
-function M.modalMousepressed(x, y, mouseButton, state)
-    if mouseButton ~= 1 then return end
-    M.setCursor("arrow")
-    if state.hoveredButton then
-        if state.hoveredButton.fn then
-            state.hoveredButton.fn()
-        end
-    end
-end
-
-function M.modalMousemoved(x, y, state)
+function M.resolveModalButtonHover(x, y, state)
     local hoveringAnyButton = false
     for _, button in ipairs(graphics.buttons) do
         button.hovered = M.mouseHover(x, y, button.box)
@@ -201,6 +185,19 @@ function M.modalMousemoved(x, y, state)
         M.setCursor("arrow")
         state.hoveredButton = nil
     end
+end
+function M.modalMousepressed(x, y, mouseButton, state)
+    if mouseButton ~= 1 then return end
+    M.resolveModalButtonHover(x, y, state)
+    if state.hoveredButton then
+        if state.hoveredButton.fn then
+            state.hoveredButton.fn()
+        end
+    end
+end
+
+function M.modalMousemoved(x, y, state)
+    M.resolveModalButtonHover(x, y, state)
 end
 
 M.states = states

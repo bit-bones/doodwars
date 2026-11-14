@@ -95,6 +95,16 @@ M.DEFAULTS = {
     SAFE_RESCUE_DISTANCE = 500,
 }
 
+function M.getHoveredDood(g)
+    local frontDepth = -math.huge
+    for _, d in ipairs(g.doods) do
+        if insideRectangle(g.mouseWorldX, g.mouseWorldY, d.box) and d.sortY and d.sortY > frontDepth then
+            g.hoveredDood = d
+            frontDepth = d.sortY
+        end
+    end
+end
+
 function M.getNavigationClearance(color, scale)
     local spriteW = doodAnimations[color].idle.down:getDimensions()
     return spriteW * (scale or M.DEFAULTS.SCALE) * COLLISION_RADIUS_RATIO + NAVIGATION_MARGIN
@@ -386,6 +396,11 @@ function M.getDoodBox(d)
         centerX = bx + bw / 2,
         centerY = by + bh / 2,
     }
+    d.arrow = {
+        d.box.centerX, d.box.y - 5,
+        d.box.centerX + d.box.w / 6, d.box.y - 10,
+        d.box.centerX - d.box.w / 6, d.box.y - 10
+    }
 end
 
 function M.update(dt, g)
@@ -453,8 +468,8 @@ function M.update(dt, g)
                         d.attackTarget.hp = d.attackTarget.hp - d.damage
                         d.attackTarget.animation = d.attackTarget.animations.hurt
                         d.attackTarget.hurtTimer = M.DEFAULTS.HURT_TIME
-                        if d.command == nil then
-                            d.attackTarget.attackTarget = d
+                        if d.attackTarget.command == nil and d.attackTarget.state ~= "fight" then
+                            M.setAttackTarget(d.attackTarget, g, i)
                         end
                     end
                     d.attackTimer = d.attackTimer - dt
@@ -465,7 +480,6 @@ function M.update(dt, g)
                     if d.route and d.routeTargetX and d.routeTargetY then
                         local difX = d.attackTarget.bodyX - d.routeTargetX
                         local difY = d.attackTarget.bodyY - d.routeTargetY
-
                         local repathTolerance = 50
                         if difX * difX + difY * difY >= repathTolerance * repathTolerance then
                             d.route, d.routeIndex = nil, nil
@@ -703,6 +717,7 @@ function M.newDood(x, y, color, g)
     }
     M.getDoodBox(dood)
     table.insert(g.doods, dood)
+    M.getHoveredDood(g)
 end
 
 return M

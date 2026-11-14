@@ -1,6 +1,5 @@
 local mouse = require "mouse"
 local graphics = require "graphics"
-local container = graphics.container
 local fonts = graphics.fonts
 local colors = graphics.colors
 local getColor = graphics.getColor
@@ -9,12 +8,33 @@ local rectangle = love.graphics.rectangle
 
 local M = {}
 
-function M.tabsModal(tabs)
-    
+function M.infoBar(g)
+    local previousColor = getColor()
+    local container = graphics.infoBarContainer
+
+    setColor(colors.transparentGray)
+    rectangle("fill", container.x, container.y, container.w, container.h)
+    setColor(colors.neutral)
+    for i, d in ipairs(g.doods) do
+        local currentDood = d
+        if currentDood.selected then
+            currentDood.animation[currentDood.dir]:draw(
+                currentDood.animation.image,
+                container.x + 20,
+                container.y + 20,
+                0, 4, 4
+            )
+            love.graphics.printf(currentDood.state, container.x + 20, container.y + 50, container.w, "center")
+        end
+    end
+
+    setColor(previousColor)
 end
 
-function M.modal(titleText)
+function M.modal(titleText, tabs)
     local previousColor = getColor()
+    local previousFont = love.graphics.getFont()
+    local container = graphics.modalContainer
     local titleY = container.y + 50
 
     setColor(colors.transparentGray)
@@ -31,6 +51,7 @@ function M.modal(titleText)
     end
 
     setColor(previousColor)
+    love.graphics.setFont(previousFont)
 end
 
 return M

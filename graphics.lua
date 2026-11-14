@@ -23,11 +23,10 @@ M.colors = {
     yellow =               {0.55, 0.5, 0.1},
     green =                {0.35, 0.55, 0.15},
 }
-
 M.backgrounds = {M.colors.blue, M.colors.red, M.colors.yellow, M.colors.green}
 
 M.screen = {}
-M.container = {}
+M.modalContainer = {}
 
 local buttonPadding = 150
 local buttonSpacing = 20
@@ -39,13 +38,27 @@ function M.getScreen()
     M.screen.centerY = M.screen.h / 2
 end
 
+function M.getinfoBarLayout()
+    local container = {}
+    M.getScreen()
+
+    container.h = 200
+    container.w = M.screen.w
+    container.y = 0 + M.screen.h - container.h
+    container.x = 0
+
+    
+
+    M.infoBarContainer = container
+end
+
 function M.getModalLayout(buttons)
     M.getScreen()
 
-    M.container.w = 800
-    M.container.h = 800
-    M.container.x = M.screen.centerX - M.container.w / 2
-    M.container.y = M.screen.centerY - M.container.h / 2
+    M.modalContainer.w = 800
+    M.modalContainer.h = 800
+    M.modalContainer.x = M.screen.centerX - M.modalContainer.w / 2
+    M.modalContainer.y = M.screen.centerY - M.modalContainer.h / 2
 
     M.buttons = buttons or M.buttons
     if not M.buttons then return end
@@ -53,9 +66,9 @@ function M.getModalLayout(buttons)
     for i, button in ipairs(M.buttons) do
         button.offset = i * M.fontHeights.slabsButtons * 2 + buttonSpacing
         button.box = {
-            x = M.container.x + buttonPadding,
+            x = M.modalContainer.x + buttonPadding,
             y = topY + button.offset - M.fontHeights.slabsButtons / 2,
-            w = M.container.w - buttonPadding * 2,
+            w = M.modalContainer.w - buttonPadding * 2,
             h = buttonH,
         }
         button.textY = button.box.y + button.box.h / 4
