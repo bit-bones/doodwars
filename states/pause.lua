@@ -25,6 +25,7 @@ function pause:init()
             label = "Main menu",
             fn = function ()
                 local menu = require "states.menu"
+                menu.backgroundColor = love.math.random(4) -- color background
                 Gamestate.switch(menu)
             end
         },
@@ -34,8 +35,9 @@ end
 function pause:enter(previous)
     self.previous = previous
     local x, y = love.mouse.getPosition()
-    mouse.resolveModalButtonHover(x, y, self)
     graphics.getModalLayout(self.buttons)
+    mouse.resolveModalButtonHover(x, y, self)
+
 end
 
 function pause:draw()

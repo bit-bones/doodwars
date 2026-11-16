@@ -13,35 +13,123 @@ local setColor = graphics.setColor
 local menu = {}
 
 function menu:init()
+    self.backgroundColor = love.math.random(4) -- color background
+    self.settings = {}
     self.drawModal = true
+
+    self.backButton = {
+        bottom = true,
+        label = "Back",
+        fn = function ()
+            self.escapePressed()
+        end
+    }
+
+    self.startButton = {
+        bottom = true,
+        label = "Start game",
+        fn = function ()
+            if self.gameReady then
+                self:startGame()
+            end
+        end
+    }
+
+    self.playerTypes = {
+        {label = "Human"},
+        {label = "Bot"},
+        self.backButton
+    }
+
+    self.connectionTypes = {
+        {
+            label = "Local",
+            fn = function ()
+                self.settings.chosenConnectionType = "Local"
+                -- self.availableModes = self.gamemodes
+                self:enterGamemodeSelection()
+            end
+        },
+        {
+            label = "Online",
+            fn = function ()
+                self.settings.chosenConnectionType = "Online"
+                -- table.remove(self.availableModes, 1)
+                self:enterGamemodeSelection()
+            end
+        },
+        self.backButton
+    }
+    -- for _, type in ipairs(self.connectionTypes) do
+    --     type.fn = function ()
+    --         self.settings.chosenConnectionType = type.label
+    --         self:enterGamemodeSelection()
+    --     end
+    -- end
+
+    self.teams = {
+        {label = "Blue"},
+        {label = "Red"},
+        {label = "Green"},
+        {label = "Yellow"},
+    }
+    for _, team in ipairs(self.teams) do
+        team.fn = function ()
+            self:enterPlayerSelection()
+        end
+    end
+    table.insert(self.teams, self.backButton)
+    table.insert(self.teams, self.startButton)
 
     self.maps = {}
     for _, map in ipairs(love.filesystem.getDirectoryItems("maps")) do
         table.insert(self.maps, {
             label = map,
             fn = function ()
-                self.chosenMap = map
-                self:startGame()
+                self.settings.chosenMap = map
+                if self.settings.chosenGamemode == "Sandbox" then
+                    self:startGame()
+                    return
+                end
+                self:enterTeamSelection()
             end
         })
     end
+    table.insert(self.maps, self.backButton)
 
     self.gamemodes = {
-        {label = "Sandbox"},
-        {label = "Doodomination"},
+        {
+            label = "Sandbox",
+            fn = function ()
+                self.settings.chosenGamemode = "Sandbox"
+                self:enterMapSelection()
+                self.settings.player = {
+                    squads = self.teams
+                }
+            end
+        },
+        {
+            label = "Doodomination",
+            fn = function ()
+                self.settings.chosenGamemode = "Doodomination"
+                self:enterMapSelection()
+                self.settings.player = {
+                    squads = {
+                        {label = "All"}
+                    }
+                }
+            end
+        },
+        self.backButton
     }
-    for _, mode in ipairs(self.gamemodes) do
-        mode.fn = function ()
-            self.chosenMode = mode.label
-            self:chooseMap()
-        end
-    end
 
-    self.buttons = {
+    -- self.availableModes = self.gamemodes
+
+    self.mainButtons = {
         {
             label = "Play",
             fn = function()
-                self:chooseGamemode()
+                self:enterConnectionSelection()
             end,
         },
         {
@@ -66,26 +154,53 @@ function menu:init()
 end
 
 function menu:enter()
-    self.backgroundColor = love.math.random(4) -- color background
-    graphics.getModalLayout(self.buttons)
+    self.gameReady = false
+    graphics.getModalLayout(self.mainButtons)
     self.title = "Dood Wars"
 end
 
 function menu:startGame()
-    Gamestate.switch(game, {
-        map = self.chosenMap,
-        gamemode = self.chosenMode,
-    })
+    Gamestate.switch(game, self.settings)
 end
 
-function menu:chooseMap()
+function menu:enterPlayerSelection()
+    self.escapePressed = function ()
+        self:enterTeamSelection()
+    end
+    graphics.getModalLayout(self.playerTypes)
+    self.title = "Player type"
+end
+
+function menu:enterConnectionSelection()
+    self.escapePressed = function ()
+        self:enter()
+    end
+    graphics.getModalLayout(self.connectionTypes)
+    self.title = "Connection"
+end
+
+function menu:enterGamemodeSelection()
+    self.escapePressed = function ()
+        self:enterConnectionSelection()
+    end
+    graphics.getModalLayout(self.gamemodes)
+    self.title = "Gamemode"
+end
+
+function menu:enterMapSelection()
+    self.escapePressed = function ()
+        self:enterGamemodeSelection()
+    end
     graphics.getModalLayout(self.maps)
     self.title = "Map"
 end
 
-function menu:chooseGamemode()
-    graphics.getModalLayout(self.gamemodes)
-    self.title = "Gamemode"
+function menu:enterTeamSelection()
+    self.escapePressed = function ()
+        self:enterMapSelection()
+    end
+    graphics.getModalLayout(self.teams)
+    self.title = "Team"
 end
 
 function menu:draw()
@@ -99,12 +214,8 @@ function menu:draw()
 end
 
 function menu:keypressed(key)
-    if key == "escape" then
-        if self.title == "Gamemode" then
-            self:enter()
-        elseif self.title == "Map" then
-            self:chooseGamemode()
-        end
+    if key == "escape" and self.escapePressed then
+        self.escapePressed()
     end
 end
 

@@ -95,10 +95,12 @@ M.DEFAULTS = {
     SAFE_RESCUE_DISTANCE = 500,
 }
 
-function M.getHoveredDood(g)
+function M.getHoveredDood(x, y, g)
+    g.mouseStates.hoveringAny = false
     local frontDepth = -math.huge
     for _, d in ipairs(g.doods) do
-        if insideRectangle(g.mouseWorldX, g.mouseWorldY, d.box) and d.sortY and d.sortY > frontDepth then
+        if (insideRectangle(g.mouseWorldX, g.mouseWorldY, d.box) and d.sortY and d.sortY > frontDepth) or insideRectangle(x, y, d.infoBarBox) then
+            g.mouseStates.hoveringAny = true
             g.hoveredDood = d
             frontDepth = d.sortY
         end
@@ -715,9 +717,15 @@ function M.newDood(x, y, color, g)
         shape = shape,
         fixture = fixture,
     }
+    -- if g.gamemode ~= "Sandbox" then
+    --     dood.squad = "All"
+    -- else
+    --     dood.squad = g.player.squads[dood.color]
+    -- end
+    dood.name = "Dood "..tostring(dood.index)
     M.getDoodBox(dood)
     table.insert(g.doods, dood)
-    M.getHoveredDood(g)
+    M.getHoveredDood(x, y, g)
 end
 
 return M

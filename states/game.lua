@@ -19,16 +19,14 @@ local setColor = graphics.setColor
 local fonts = graphics.fonts
 
 function game:enter(previous, settings)
-    graphics.getinfoBarLayout()
     love.physics.setMeter(32)
 
     self.data = {
-        gamemode = settings.gamemode,
-        map = sti("maps/"..settings.map.."/"..settings.map.."-tilemap.lua", {"box2d"}),
-        navmesh =  require ("maps."..settings.map.."."..settings.map.."-navmesh"),
+        gamemode = settings.chosenGamemode,
+        map = sti("maps/"..settings.chosenMap.."/"..settings.chosenMap.."-tilemap.lua", {"box2d"}),
+        navmesh =  require ("maps."..settings.chosenMap.."."..settings.chosenMap.."-navmesh"),
         world = love.physics.newWorld(0, 0, true),
         camera = cam.new(0, 0, 2),
-        stopCheckTime = 0.5,
         controlledDood = nil,
         currentZoom = 0.5,
         zoomSpeed = 0.15,
@@ -44,6 +42,7 @@ function game:enter(previous, settings)
         bases = {},
         props = {},
         selectionBox = {},
+        players = settings.players,
     }
 
     self.data.navigation = pathfun.Navigation(self.data.navmesh)
@@ -231,6 +230,7 @@ function game:enter(previous, settings)
 
     self.data.keyStates = keyboard.states
     self.data.mouseStates = mouse.states
+    graphics.getinfoBarLayout(self.data)
 end
 
 function game:update(dt)
@@ -418,22 +418,27 @@ function game:draw()
    self.data.camera:detach()
 
     -- hud
-    ui.infoBar(game.data)
+    ui.infoBar(self.data)
 
     local controlledDood = self.data.controlledDood
     local controlledDoodIndex = controlledDood and controlledDood.index or "none"
+    local hoveredDood = self.data.hoveredDood
+    local hoveredDoodIndex = hoveredDood and hoveredDood.index or "none"
     love.graphics.setFont(fonts.debugHud)
     love.graphics.print("\nmouseX: "..math.floor(self.data.mouseWorldX)..
                         "\nmouseY: "..math.floor(self.data.mouseWorldY)..
-                        -- "\nzoom scale: "..self.data.camera.scale..
+                        "\nzoom scale: "..self.data.camera.scale..
                         "\ncontrolling dood: "..(controlledDoodIndex or "none")..
-                        "\nalt toggle: "..altToggle
+                        "\nalt toggle: "..altToggle..
+                        "\nhovering info bar: "..(tostring(self.data.hoveringInfoBar) or "none")..
+                        "\nhovered dood: "..(hoveredDoodIndex or "none")..
+                        "\nhovering any:"..(tostring(self.data.mouseStates.hoveringAny))
                         ,10, 30)
 
 end
 
 function game:resize()
-    graphics.getinfoBarLayout()
+    graphics.getinfoBarLayout(self.data)
 end
 
 -- input controls
@@ -458,6 +463,17 @@ function game:mousemoved(x, y, dx, dy)
 end
 
 function game:wheelmoved(x, y)
+    if self.data.hoveringInfoBar then
+        local maxScissorOffset = math.max(0, #graphics.selectedDoods * 126 - (graphics.infoBarContainer.w - graphics.squadsContainer.w))
+        if y > 0 then
+            graphics.infoBarScissorOffset = graphics.infoBarScissorOffset + 20
+        elseif y < 0 then
+            graphics.infoBarScissorOffset = graphics.infoBarScissorOffset - 20
+        end
+        graphics.infoBarScissorOffset = math.max(0, math.min(maxScissorOffset, graphics.infoBarScissorOffset))
+        graphics.getinfoBarLayout(self.data)
+        return
+    end
     if y > 0 then
         self.data.camera:zoom(1 + self.data.zoomSpeed)
     elseif y < 0 then
