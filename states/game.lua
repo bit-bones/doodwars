@@ -221,6 +221,12 @@ function game:enter(previous, settings)
         setColor(colors.neutral)
     end
 
+    print(#self.data.players)
+
+    for i, player in ipairs(self.data.players) do
+        
+    end
+
     if #self.data.shrines > 0 then
         self.data.shrines[1].team = "blue"
         self.data.shrines[3].team = "red"

@@ -201,7 +201,14 @@ end
 -- modal
 function M.resolveModalButtonHover(x, y, state)
     local hoveringAnyButton = false
-    for _, button in ipairs(graphics.buttons) do
+    for _, button in ipairs(graphics.mainButtons) do
+        button.hovered = M.mouseHover(x, y, button.box)
+        if button.hovered then
+            state.hoveredButton = button
+            hoveringAnyButton = true
+        end
+    end
+    for _, button in ipairs(graphics.bottomButtons) do
         button.hovered = M.mouseHover(x, y, button.box)
         if button.hovered then
             state.hoveredButton = button
@@ -215,17 +222,32 @@ function M.resolveModalButtonHover(x, y, state)
         state.hoveredButton = nil
     end
 end
+
+function M.modalWheelMoved(x, y, state)
+    if M.hoveringModalScissor then
+        if y > 0 then
+            graphics.buttonScissorOffset = graphics.buttonScissorOffset - 20
+        elseif y < 0 then
+            graphics.buttonScissorOffset = graphics.buttonScissorOffset + 20
+        end
+        graphics.buttonScissorOffset = math.max(0, math.min(graphics.maxScissorOffset, graphics.buttonScissorOffset))
+        graphics.getModalLayout()
+    end
+end
+
 function M.modalMousepressed(x, y, mouseButton, state)
     if mouseButton ~= 1 then return end
-    M.resolveModalButtonHover(x, y, state)
+    -- M.resolveModalButtonHover(x, y, state)
     if state.hoveredButton then
         if state.hoveredButton.fn then
             state.hoveredButton.fn()
         end
     end
+    M.resolveModalButtonHover(x, y, state)
 end
 
 function M.modalMousemoved(x, y, state)
+    M.hoveringModalScissor = M.mouseHover(x, y, graphics.buttonScissor)
     M.resolveModalButtonHover(x, y, state)
 end
 

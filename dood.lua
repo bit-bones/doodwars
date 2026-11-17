@@ -99,7 +99,8 @@ function M.getHoveredDood(x, y, g)
     g.mouseStates.hoveringAny = false
     local frontDepth = -math.huge
     for _, d in ipairs(g.doods) do
-        if (insideRectangle(g.mouseWorldX, g.mouseWorldY, d.box) and d.sortY and d.sortY > frontDepth) or insideRectangle(x, y, d.infoBarBox) then
+        d.hovered = (insideRectangle(g.mouseWorldX, g.mouseWorldY, d.box) and d.sortY and d.sortY > frontDepth) or insideRectangle(x, y, d.infoBarBox)
+        if d.hovered then
             g.mouseStates.hoveringAny = true
             g.hoveredDood = d
             frontDepth = d.sortY

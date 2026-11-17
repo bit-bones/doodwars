@@ -1,5 +1,4 @@
 local mouse = require "mouse"
-local sti = require "libs/sti"
 local Gamestate = require "libs/hump/gamestate"
 local options = require "states.options"
 local game = require "states.game"
@@ -14,31 +13,62 @@ local menu = {}
 
 function menu:init()
     self.backgroundColor = love.math.random(4) -- color background
-    self.settings = {}
+    self.settings = {
+        players = {}
+    }
     self.drawModal = true
 
-    self.backButton = {
-        bottom = true,
-        label = "Back",
-        fn = function ()
-            self.escapePressed()
-        end
+    self.settingsButton = {
+        label = "Settings"
     }
 
     self.startButton = {
-        bottom = true,
         label = "Start game",
         fn = function ()
-            if self.gameReady then
+            -- if self.gameReady then
                 self:startGame()
-            end
+            -- end
         end
     }
 
     self.playerTypes = {
-        {label = "Human"},
-        {label = "Bot"},
-        self.backButton
+        {
+            label = "You",
+            fn = function ()
+                for i, player in ipairs(self.settings.players) do
+                    if player.type == "you" then
+                        player = nil
+                        self.teams[i].context = "Empty"
+                    end
+                end
+                self.settings.players[self.chosenTeamIndex] = {
+                    type = "you",
+                    team = self.chosenTeam,
+                    squads = {label = "Squad 1"},
+                }
+                self.teams[self.chosenTeamIndex].context = "You"
+                self:enterTeamSelection()
+            end
+        },
+        {
+            label = "Bot",
+            fn = function ()
+               self.settings.players[self.chosenTeamIndex] = {
+                    type = "bot",
+                    team = self.chosenTeam,
+                }
+                self.teams[self.chosenTeamIndex].context = "Bot"
+                self:enterTeamSelection()
+            end
+        },
+        {
+            label = "Empty",
+            fn = function ()
+                self.settings.players[self.chosenTeamIndex] = nil
+                self.teams[self.chosenTeamIndex].context = "Empty"
+                self:enterTeamSelection()
+            end
+        },
     }
 
     self.connectionTypes = {
@@ -58,14 +88,7 @@ function menu:init()
                 self:enterGamemodeSelection()
             end
         },
-        self.backButton
     }
-    -- for _, type in ipairs(self.connectionTypes) do
-    --     type.fn = function ()
-    --         self.settings.chosenConnectionType = type.label
-    --         self:enterGamemodeSelection()
-    --     end
-    -- end
 
     self.teams = {
         {label = "Blue"},
@@ -73,13 +96,14 @@ function menu:init()
         {label = "Green"},
         {label = "Yellow"},
     }
-    for _, team in ipairs(self.teams) do
+    for i, team in ipairs(self.teams) do
+        team.context = "Empty"
         team.fn = function ()
+            self.chosenTeamIndex = i
+            self.chosenTeam = team.label
             self:enterPlayerSelection()
         end
     end
-    table.insert(self.teams, self.backButton)
-    table.insert(self.teams, self.startButton)
 
     self.maps = {}
     for _, map in ipairs(love.filesystem.getDirectoryItems("maps")) do
@@ -95,7 +119,6 @@ function menu:init()
             end
         })
     end
-    table.insert(self.maps, self.backButton)
 
     self.gamemodes = {
         {
@@ -103,8 +126,20 @@ function menu:init()
             fn = function ()
                 self.settings.chosenGamemode = "Sandbox"
                 self:enterMapSelection()
-                self.settings.player = {
-                    squads = self.teams
+                self.settings.players = {
+                    [1] = {
+                        type = "you",
+                        team = "all",
+                        squads = {
+                            {label = "Blue"},
+                            {label = "Red"},
+                            {label = "Green"},
+                            {label = "Yellow"},
+                        }
+                    },
+                    [2] = nil,
+                    [3] = nil,
+                    [4] = nil,
                 }
             end
         },
@@ -120,7 +155,6 @@ function menu:init()
                 }
             end
         },
-        self.backButton
     }
 
     -- self.availableModes = self.gamemodes
@@ -154,8 +188,11 @@ function menu:init()
 end
 
 function menu:enter()
+    self.escapePressed = function ()
+        love.event.quit()
+    end
     self.gameReady = false
-    graphics.getModalLayout(self.mainButtons)
+    graphics.getModalLayout(self.mainButtons, {})
     self.title = "Dood Wars"
 end
 
@@ -167,7 +204,7 @@ function menu:enterPlayerSelection()
     self.escapePressed = function ()
         self:enterTeamSelection()
     end
-    graphics.getModalLayout(self.playerTypes)
+    graphics.getModalLayout(self.playerTypes, {ui.backButton})
     self.title = "Player type"
 end
 
@@ -175,7 +212,7 @@ function menu:enterConnectionSelection()
     self.escapePressed = function ()
         self:enter()
     end
-    graphics.getModalLayout(self.connectionTypes)
+    graphics.getModalLayout(self.connectionTypes, {ui.backButton})
     self.title = "Connection"
 end
 
@@ -183,7 +220,7 @@ function menu:enterGamemodeSelection()
     self.escapePressed = function ()
         self:enterConnectionSelection()
     end
-    graphics.getModalLayout(self.gamemodes)
+    graphics.getModalLayout(self.gamemodes, {ui.backButton})
     self.title = "Gamemode"
 end
 
@@ -191,7 +228,7 @@ function menu:enterMapSelection()
     self.escapePressed = function ()
         self:enterGamemodeSelection()
     end
-    graphics.getModalLayout(self.maps)
+    graphics.getModalLayout(self.maps, {ui.backButton})
     self.title = "Map"
 end
 
@@ -199,7 +236,7 @@ function menu:enterTeamSelection()
     self.escapePressed = function ()
         self:enterMapSelection()
     end
-    graphics.getModalLayout(self.teams)
+    graphics.getModalLayout(self.teams, {self.startButton, ui.backButton, self.settingsButton,})
     self.title = "Team"
 end
 
@@ -210,6 +247,12 @@ function menu:draw()
     if self.drawModal then
         ui.modal(self.title)
     end
+
+    -- setColor(colors.neutral)
+    -- if mouse then
+    --     love.graphics.print(tostring(mouse.hoveringModalScissor), 10, 10)
+    -- end
+
     setColor(previousColor)
 end
 
@@ -217,6 +260,10 @@ function menu:keypressed(key)
     if key == "escape" and self.escapePressed then
         self.escapePressed()
     end
+end
+
+function menu:wheelmoved(x, y)
+    mouse.modalWheelMoved(x, y, self)
 end
 
 function menu:mousemoved(x, y)
@@ -233,7 +280,7 @@ end
 
 function menu:leave()
     mouse.setCursor("arrow")
-    graphics.buttons = nil
+    graphics.buttons = {}
 end
 
 return menu

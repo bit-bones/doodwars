@@ -7,15 +7,21 @@ local colors = graphics.colors
 local options = {}
 
 function options:init()
+    self.escapePressed = function ()
+        Gamestate.pop()
+    end
+
     self.tabs = {
         {label = "Video"}
     }
 end
 
 function options:enter(previous)
+    self.previousMainButtons = graphics.mainButtons
+    self.previousBottomButtons = graphics.bottomButtons
     self.previous = previous
     self.previous.drawModal = false
-    graphics.getModalLayout(self.tabs)
+    graphics.getModalLayout(self.tabs, ui.backButton)
 end
 
 function options:draw()
@@ -25,7 +31,7 @@ end
 
 function options:keypressed(key)
     if key == "escape" then
-        Gamestate.pop()
+        self.escapePressed()
     end
 end
 
@@ -35,7 +41,7 @@ end
 
 function options:leave()
     self.previous.drawModal = true
-    graphics.getModalLayout(self.previous.buttons)
+    graphics.getModalLayout(self.previousMainButtons, self.previousBottomButtons)
 end
 
 return options

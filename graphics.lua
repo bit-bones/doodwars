@@ -27,6 +27,8 @@ M.colors = {
 }
 M.backgrounds = {M.colors.blue, M.colors.red, M.colors.yellow, M.colors.green}
 
+M.maxScissorOffset = 0
+M.buttonScissorOffset = 0
 M.titleSpacing = 50
 M.infoBarScissorOffset = 0
 M.screen = {}
@@ -102,66 +104,68 @@ function M.getinfoBarLayout(g)
     end
 end
 
-function M.getModalLayout(buttons, bottomButtons)
+function M.getModalLayout(mainButtons, bottomButtons)
     M.getScreen()
 
-    M.modalContainer.w = 800
-    M.modalContainer.h = 900
+    M.modalContainer.w = 850
+    M.modalContainer.h = 850
     M.modalContainer.x = M.screen.centerX - M.modalContainer.w / 2
     M.modalContainer.y = M.screen.centerY - M.modalContainer.h / 2
     M.modalContainer.titleY = M.modalContainer.y + M.titleSpacing
 
+    local bottomButtonW = (M.modalContainer.w - buttonPadding * 2) / 2
+
     M.buttonScissor = {
-        x = M.modalContainer.x + buttonPadding,
+        x = M.modalContainer.x + buttonPadding - 10,
         y = M.modalContainer.y + M.fontHeights.slabsTitle + (M.titleSpacing * 2),
-        w = M.modalContainer.w - buttonPadding * 2,
+        w = (M.modalContainer.w - buttonPadding * 2) + 20,
         h = M.modalContainer.h - (M.fontHeights.slabsTitle * 2) - (M.titleSpacing * 4)
     }
 
-    -- bottomY = M.modalContainer.y + M.modalContainer.h - M.fontHeights.slabsTitle - (M.titleSpacing * 2)
-
-    M.buttons = buttons or M.buttons
-    if M.buttons then
-        local topY = M.screen.centerY - ((#M.buttons * buttonH) / 2)
-        M.anyBottomButtons = false
-        for i, button in ipairs(M.buttons) do
-            if button.bottom then
-                M.anyBottomButtons = true
-                button.box = {
-                    x = M.modalContainer.x + buttonPadding,
-                    y = M.buttonScissor.y + M.buttonScissor.h + (buttonH / 2),
-                    w = M.modalContainer.w - buttonPadding * 2,
-                    h = buttonH,
-                }
-            else
-                button.offset = i * M.fontHeights.slabsButtons * 2
-                button.box = {
-                    x = M.modalContainer.x + buttonPadding,
-                    y = topY + button.offset - M.fontHeights.slabsButtons / 2,
-                    w = M.modalContainer.w - buttonPadding * 2,
-                    h = buttonH,
-                }
-            end
+    M.mainButtons = mainButtons or M.mainButtons
+    if M.mainButtons then
+        local requiredH = #M.mainButtons * buttonH
+        M.maxScissorOffset = math.max(0, requiredH - M.buttonScissor.h)
+        local topY = M.buttonScissor.y
+        if requiredH <= M.buttonScissor.h then
+            topY = topY + (M.buttonScissor.h - requiredH) / 2
+        end
+        M.buttonScissorOffset = math.max(0, math.min(M.maxScissorOffset, M.buttonScissorOffset))
+        for i, button in ipairs(M.mainButtons) do
+            button.box = {
+                x = M.modalContainer.x + buttonPadding,
+                y = topY + (i - 1) * buttonH - M.buttonScissorOffset,
+                w = M.modalContainer.w - buttonPadding * 2,
+                h = buttonH,
+            }
             button.textY = button.box.y + button.box.h / 4
         end
     end
 
-    -- if bottomButtons == "none" then
-    --     M.bottomButtons = nil
-    --     return
-    -- end
-    -- M.bottomButtons = bottomButtons or M.bottomButtons
-    -- if M.bottomButtons then
-    --     for i, button in ipairs(M.bottomButtons) do
-    --         button.box = {
-    --             x = M.modalContainer.x + buttonPadding,
-    --             y = M.buttonScissor.y + M.buttonScissor.h + (buttonH / 2),
-    --             w = M.modalContainer.w - buttonPadding * 2,
-    --             h = buttonH,
-    --         }
-    --         button.textY = button.box.y + button.box.h / 4
-    --     end
-    -- end
+    M.bottomButtons = bottomButtons or M.bottomButtons
+    if #M.bottomButtons > 0 then
+        for i, button in ipairs(M.bottomButtons) do
+            if #M.bottomButtons == 1 then
+                button.box = {
+                x = M.modalContainer.x + M.modalContainer.w / 2 - bottomButtonW / 2,
+            }
+            elseif #M.bottomButtons == 2 then
+                button.offset = i * bottomButtonW
+                button.box = {
+                x = M.modalContainer.x + buttonPadding + button.offset - (M.buttonScissor.w / 2),
+            }
+            elseif #M.bottomButtons >= 3 then
+                button.offset = i * bottomButtonW
+                button.box = {
+                x = M.modalContainer.x + buttonPadding + button.offset - (bottomButtonW * 1.5),
+            }
+            end
+            button.box.y = M.buttonScissor.y + M.buttonScissor.h + (buttonH / 2)
+            button.box.h = buttonH
+            button.box.w = bottomButtonW
+            button.textY = button.box.y + button.box.h / 4
+        end
+    end
 end
 
 function M.getColor()

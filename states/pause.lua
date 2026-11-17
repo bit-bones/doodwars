@@ -35,7 +35,7 @@ end
 function pause:enter(previous)
     self.previous = previous
     local x, y = love.mouse.getPosition()
-    graphics.getModalLayout(self.buttons)
+    graphics.getModalLayout(self.buttons, {})
     mouse.resolveModalButtonHover(x, y, self)
 
 end
@@ -67,7 +67,7 @@ end
 
 function pause:leave()
     mouse.setCursor("arrow")
-    graphics.buttons = nil
+    graphics.buttons = {}
 end
 
 return pause

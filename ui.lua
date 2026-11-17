@@ -1,5 +1,6 @@
 local mouse = require "mouse"
 local graphics = require "graphics"
+local Gamestate = require "libs/hump/gamestate"
 local fonts = graphics.fonts
 local fontHeights = graphics.fontHeights
 local colors = graphics.colors
@@ -9,6 +10,14 @@ local setColor = graphics.setColor
 local rectangle = love.graphics.rectangle
 
 local M = {}
+
+M.backButton = {
+    label = "Back",
+    fn = function ()
+        local state = Gamestate.current()
+        state.escapePressed()
+    end
+}
 
 function M.infoBar(g)
     local previousFont = love.graphics.getFont()
@@ -40,7 +49,7 @@ function M.infoBar(g)
     love.graphics.setLineWidth(3)
     for _, d in ipairs(graphics.selectedDoods) do
         if d.hovered then
-            setColor(0.2, 0.2, 0.2, 0.7)
+            setColor(0.15, 0.15, 0.15, 0.9)
             rectangle("fill", d.infoBarBox.x, d.infoBarBox.y, d.infoBarBox.w, d.infoBarBox.h)
         end
         setColor(colors[d.color])
@@ -54,8 +63,7 @@ function M.infoBar(g)
         )
         love.graphics.setFont(fonts.slabsInfoBar)
         love.graphics.printf(d.name, d.infoBarBox.x, d.infoBarBox.y + 5, d.infoBarBox.w, "center")
-        love.graphics.printf(d.state, d.infoBarBox.x, d.infoBarBox.y + d.infoBarBox.h - fontHeights.slabsInfoBar - 5,
-            d.infoBarBox.w, "center")
+        love.graphics.printf(d.state, d.infoBarBox.x, d.infoBarBox.y + d.infoBarBox.h - fontHeights.slabsInfoBar - 5, d.infoBarBox.w, "center")
     end
 
     love.graphics.setLineWidth(1)
@@ -76,16 +84,37 @@ function M.modal(titleText, tabs)
     love.graphics.setFont(fonts.slabsTitle)
     love.graphics.printf(titleText, container.x, container.titleY, container.w, "center")
     love.graphics.line(buttonScissor.x, buttonScissor.y, buttonScissor.x + buttonScissor.w, buttonScissor.y)
+    love.graphics.setScissor(buttonScissor.x, buttonScissor.y, buttonScissor.w, buttonScissor.h)
     love.graphics.setFont(fonts.slabsButtons)
-    for _, button in ipairs(graphics.buttons) do
+    for _, button in ipairs(graphics.mainButtons) do
         if button.hovered then
             rectangle("line", button.box.x, button.box.y, button.box.w, button.box.h, 10, 10)
         end
-        if button.label then love.graphics.printf(button.label, button.box.x, button.textY, button.box.w, "center") end
+        if button.label then
+            love.graphics.printf(button.label, button.box.x, button.textY, button.box.w, "center") 
+        end
+        if button.context then
+            local pf = love.graphics.getFont()
+            local pc = getColor()
+            love.graphics.setFont(fonts.squadButtons)
+            setColor(colors.dimNeutral)
+            love.graphics.printf(button.context, button.box.x, button.textY, button.box.w, "left")
+            setColor(pc)
+            love.graphics.setFont(pf)
+        end
     end
+    love.graphics.setScissor()
 
-    if graphics.anyBottomButtons then
+    if graphics.bottomButtons and #graphics.bottomButtons > 0 then
         love.graphics.line(buttonScissor.x, buttonScissor.y + buttonScissor.h, buttonScissor.x + buttonScissor.w, buttonScissor.y + buttonScissor.h)
+        for _, button in ipairs(graphics.bottomButtons) do
+            if button.hovered then
+                rectangle("line", button.box.x, button.box.y, button.box.w, button.box.h, 10, 10)
+            end
+            if button.label then
+                love.graphics.printf(button.label, button.box.x, button.textY, button.box.w, "center") 
+            end
+        end
     end
 
     setColor(previousColor)
