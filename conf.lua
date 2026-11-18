@@ -1,4 +1,5 @@
 function love.conf(t)
+    t.window.title = "Dood Wars"
     t.window.width = 1200
     t.window.height = 950
     t.window.resizable = true

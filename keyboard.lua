@@ -1,12 +1,9 @@
 local Gamestate = require "libs/hump/gamestate"
 local pause = require "states.pause"
-local dood = require("dood")
+local dood = require "dood"
+local graphics = require "graphics"
 
 local M = {}
-
-local states = {
-    altToggle = 0,
-}
 
 M.keymap = {
 --==================================================--
@@ -17,10 +14,10 @@ M.keymap = {
     },
 --==================================================--
     lalt = {
-        pressed = function ()
-            states.altToggle = states.altToggle + 1
-            if states.altToggle > 5 then
-                states.altToggle = 0
+        pressed = function (g)
+            g.input.altToggle = g.input.altToggle + 1
+            if g.input.altToggle > 5 then
+                g.input.altToggle = 0
             end
         end
     },
@@ -28,13 +25,17 @@ M.keymap = {
     space = {
         pressed = function (g)
             local c
-            if love.keyboard.isDown("b") then c = "blue"
-            elseif love.keyboard.isDown("r") then c = "red"
-            elseif love.keyboard.isDown("g") then c = "green"
-            elseif love.keyboard.isDown("y") then c = "yellow"
+            if love.keyboard.isDown("b") then c = "Blue"
+            elseif love.keyboard.isDown("r") then c = "Red"
+            elseif love.keyboard.isDown("g") then c = "Green"
+            elseif love.keyboard.isDown("y") then c = "Yellow"
             -- elseif love.keyboard.isDown("n") then c = "neutral"
             end
-            if c then dood.newDood(g.mouseWorldX, g.mouseWorldY, c, g) end
+            if c then
+                local index = dood.newDood(g.input.mouseWorldX, g.input.mouseWorldY, c, g)
+                table.insert(g.localPlayer.squads[#g.localPlayer.squads], index)
+                graphics.getinfoBarLayout(g)
+            end
         end,
     },
 --==================================================--
@@ -46,11 +47,11 @@ M.keymap = {
 --==================================================--
     lshift = {
         pressed = function (g)
-            g.keyPanSpeed = 800
+            g.input.keyPanSpeed = 800
         end,
 
         released = function (g)
-            g.keyPanSpeed = 150
+            g.input.keyPanSpeed = 150
         end,
     },
 --==================================================--
@@ -91,8 +92,8 @@ function M.update(dt, g)
         end
     else
         g.camera:move(
-            moveX * dt * g.keyPanSpeed,
-            moveY * dt * g.keyPanSpeed
+            moveX * dt * g.input.keyPanSpeed,
+            moveY * dt * g.input.keyPanSpeed
         )
     end
 end
@@ -113,7 +114,5 @@ function M.keyreleased(key, g)
         action.released(g)
     end
 end
-
-M.states = states
 
 return M

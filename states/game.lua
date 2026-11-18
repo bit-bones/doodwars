@@ -22,29 +22,32 @@ function game:enter(previous, settings)
     love.physics.setMeter(32)
 
     self.data = {
+        players = settings.players,
         gamemode = settings.chosenGamemode,
         map = sti("maps/"..settings.chosenMap.."/"..settings.chosenMap.."-tilemap.lua", {"box2d"}),
         navmesh =  require ("maps."..settings.chosenMap.."."..settings.chosenMap.."-navmesh"),
         world = love.physics.newWorld(0, 0, true),
         camera = cam.new(0, 0, 2),
         controlledDood = nil,
-        currentZoom = 0.5,
-        zoomSpeed = 0.15,
-        keyPanSpeed = 150,
         cameraLocked = false,
-        mouseWorldX = 0,
-        mouseWorldY = 0,
-        mouseStates = {},
-        keyStates = {},
-        layouts = {},
         doods = {},
         shrines = {},
         bases = {},
         props = {},
-        selectionBox = {},
-        players = settings.players,
+        hud = {
+            infoBarDoods = {},
+        },
+        input = {
+            zoomSpeed = 0.15,
+            keyPanSpeed = 150,
+            mouseWorldX = 0,
+            mouseWorldY = 0,
+            altToggle = 0,
+            selectionBox = {},
+        },
     }
 
+    self.data.input.mouseWorldX, self.data.input.mouseWorldY = self.data.camera:worldCoords(love.mouse.getPosition())
     self.data.navigation = pathfun.Navigation(self.data.navmesh)
     self.data.camera.x = 875
     self.data.camera.y = 875
@@ -221,21 +224,47 @@ function game:enter(previous, settings)
         setColor(colors.neutral)
     end
 
-    print(#self.data.players)
+    local spawnCoords = {
+        {x = 220, y = 220},
+        {x = 1540, y = 220},
+        {x = 220, y = 1540},
+        {x = 1540, y = 1540}
+    }
 
-    for i, player in ipairs(self.data.players) do
-        
+    if self.data.gamemode == "Sandbox" then
+        self.data.localPlayer = self.data.players[1]
+    else
+        for i, player in ipairs(self.data.players) do
+            if player.type ~= "Empty" then
+                player.ownedShrineIds = {}
+                player.selectedDoodIds = {}
+                player.controlledDoodId = nil
+
+                local index = love.math.random(1, #spawnCoords)
+                local spawn = table.remove(spawnCoords, index)
+                player.squads = {
+                    {
+                        label = "Squad 1",
+                        doodIds = {dood.newDood(spawn.x, spawn.y, player.team, self.data)},
+                    },
+                }
+                
+
+                if player.type == "You" then
+                    self.data.localPlayer = player
+                end
+            end
+
+        end
     end
 
-    if #self.data.shrines > 0 then
-        self.data.shrines[1].team = "blue"
-        self.data.shrines[3].team = "red"
-        self.data.shrines[7].team = "green"
-        self.data.shrines[9].team = "yellow"
-    end
+    -- if #self.data.shrines > 0 then
+    --     self.data.shrines[1].team = "blue"
+    --     self.data.shrines[3].team = "red"
+    --     self.data.shrines[7].team = "green"
+    --     self.data.shrines[9].team = "yellow"
+    -- end
 
-    self.data.keyStates = keyboard.states
-    self.data.mouseStates = mouse.states
     graphics.getinfoBarLayout(self.data)
 end
 
@@ -255,7 +284,7 @@ end
 function game:draw()
     local map = self.data.map
     local camera = self.data.camera
-    local altToggle = self.data.keyStates.altToggle
+    local altToggle = self.data.input.altToggle
 
     local tx = screen.w / (2 * camera.scale) - camera.x
     local ty = screen.h / (2 * camera.scale) - camera.y
@@ -277,9 +306,9 @@ function game:draw()
 
     map:draw(tx, ty, camera.scale)
 
-     if altToggle == 5 then
+    if altToggle == 5 then
         map:box2d_draw(tx, ty, camera.scale)
-     end
+    end
 
     camera:attach()
 
@@ -373,8 +402,8 @@ function game:draw()
     end
 
     -- box
-    if self.data.hoveredDood and not self.data.draggingSelectionBox then
-        local d = self.data.hoveredDood
+    if self.data.input.hoveredDood and not self.data.input.leftClickDown then
+        local d = self.data.input.hoveredDood
         local pc = graphics.getColor()
         graphics.setColor(d.boxColor)
         love.graphics.rectangle("line", d.box.x, d.box.y, d.box.w, d.box.h)
@@ -406,8 +435,8 @@ function game:draw()
     end
 
     -- selection box
-    local box = self.data.selectionBox
-    if self.data.mouseStates.leftClickDown and box.w and box.h then
+    local box = self.data.input.selectionBox
+    if self.data.input.leftClickDown and box.w and box.h then
         local previousLineWidth = love.graphics.getLineWidth()
         local previousColor = getColor()
 
@@ -431,14 +460,14 @@ function game:draw()
     local hoveredDood = self.data.hoveredDood
     local hoveredDoodIndex = hoveredDood and hoveredDood.index or "none"
     love.graphics.setFont(fonts.debugHud)
-    love.graphics.print("\nmouseX: "..math.floor(self.data.mouseWorldX)..
-                        "\nmouseY: "..math.floor(self.data.mouseWorldY)..
+    love.graphics.print("\nmouseX: "..math.floor(self.data.input.mouseWorldX)..
+                        "\nmouseY: "..math.floor(self.data.input.mouseWorldY)..
                         "\nzoom scale: "..self.data.camera.scale..
                         "\ncontrolling dood: "..(controlledDoodIndex or "none")..
                         "\nalt toggle: "..altToggle..
-                        "\nhovering info bar: "..(tostring(self.data.hoveringInfoBar) or "none")..
+                        "\nhovering info bar: "..(tostring(self.data.input.hoveringInfoBar) or "none")..
                         "\nhovered dood: "..(hoveredDoodIndex or "none")..
-                        "\nhovering any:"..(tostring(self.data.mouseStates.hoveringAny))
+                        "\nhovering any:"..(tostring(self.data.input.hoveringAny))
                         ,10, 30)
 
 end
@@ -469,7 +498,7 @@ function game:mousemoved(x, y, dx, dy)
 end
 
 function game:wheelmoved(x, y)
-    if self.data.hoveringInfoBar then
+    if self.data.input.hoveringInfoBar then
         local maxScissorOffset = math.max(0, #graphics.selectedDoods * 126 - (graphics.infoBarContainer.w - graphics.squadsContainer.w))
         if y > 0 then
             graphics.infoBarScissorOffset = graphics.infoBarScissorOffset + 20
@@ -481,9 +510,9 @@ function game:wheelmoved(x, y)
         return
     end
     if y > 0 then
-        self.data.camera:zoom(1 + self.data.zoomSpeed)
+        self.data.camera:zoom(1 + self.data.input.zoomSpeed)
     elseif y < 0 then
-        self.data.camera:zoom(1 - self.data.zoomSpeed)
+        self.data.camera:zoom(1 - self.data.input.zoomSpeed)
     end
 end
 

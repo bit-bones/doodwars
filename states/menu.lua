@@ -11,12 +11,16 @@ local setColor = graphics.setColor
 
 local menu = {}
 
+local function resetButton(button)
+    button.drawFill = false
+    button.labelColor = colors.neutral
+    button.context.color = colors.dimNeutral
+    button.context.text = "Empty"
+end
+
 function menu:init()
-    self.backgroundColor = love.math.random(4) -- color background
-    self.settings = {
-        players = {}
-    }
     self.drawModal = true
+    self.backgroundColor = love.math.random(4) -- color background
 
     self.settingsButton = {
         label = "Settings"
@@ -36,17 +40,19 @@ function menu:init()
             label = "You",
             fn = function ()
                 for i, player in ipairs(self.settings.players) do
-                    if player.type == "you" then
-                        player = nil
-                        self.teams[i].context = "Empty"
+                    if player.type == "You" then
+                        resetButton(self.teams[i])
+                        self.settings.players[i].type = "Empty"
                     end
                 end
                 self.settings.players[self.chosenTeamIndex] = {
-                    type = "you",
+                    type = "You",
                     team = self.chosenTeam,
-                    squads = {label = "Squad 1"},
                 }
-                self.teams[self.chosenTeamIndex].context = "You"
+                self.teams[self.chosenTeamIndex].drawFill = true
+                self.teams[self.chosenTeamIndex].labelColor = colors[self.chosenTeam]
+                self.teams[self.chosenTeamIndex].context.color = colors[self.chosenTeam]
+                self.teams[self.chosenTeamIndex].context.text = "You"
                 self:enterTeamSelection()
             end
         },
@@ -54,18 +60,21 @@ function menu:init()
             label = "Bot",
             fn = function ()
                self.settings.players[self.chosenTeamIndex] = {
-                    type = "bot",
+                    type = "Bot",
                     team = self.chosenTeam,
                 }
-                self.teams[self.chosenTeamIndex].context = "Bot"
+                self.teams[self.chosenTeamIndex].drawFill = true
+                self.teams[self.chosenTeamIndex].labelColor = colors[self.chosenTeam]
+                self.teams[self.chosenTeamIndex].context.color = colors[self.chosenTeam]
+                self.teams[self.chosenTeamIndex].context.text = "Bot"
                 self:enterTeamSelection()
             end
         },
         {
             label = "Empty",
             fn = function ()
-                self.settings.players[self.chosenTeamIndex] = nil
-                self.teams[self.chosenTeamIndex].context = "Empty"
+                resetButton(self.teams[self.chosenTeamIndex])
+                self.settings.players[self.chosenTeamIndex].type = "Empty"
                 self:enterTeamSelection()
             end
         },
@@ -97,7 +106,10 @@ function menu:init()
         {label = "Yellow"},
     }
     for i, team in ipairs(self.teams) do
-        team.context = "Empty"
+        team.context = {
+            color = colors.dimNeutral,
+            text = "Empty",
+        }
         team.fn = function ()
             self.chosenTeamIndex = i
             self.chosenTeam = team.label
@@ -128,8 +140,8 @@ function menu:init()
                 self:enterMapSelection()
                 self.settings.players = {
                     [1] = {
-                        type = "you",
-                        team = "all",
+                        type = "You",
+                        team = "none",
                         squads = {
                             {label = "Blue"},
                             {label = "Red"},
@@ -148,11 +160,6 @@ function menu:init()
             fn = function ()
                 self.settings.chosenGamemode = "Doodomination"
                 self:enterMapSelection()
-                self.settings.player = {
-                    squads = {
-                        {label = "All"}
-                    }
-                }
             end
         },
     }
@@ -188,6 +195,14 @@ function menu:init()
 end
 
 function menu:enter()
+    self.settings = {
+        players = {
+            {type = "Empty", team = "Blue"},
+            {type = "Empty", team = "Red"},
+            {type = "Empty", team = "Green"},
+            {type = "Empty", team = "Yellow"},
+        }
+    }
     self.escapePressed = function ()
         love.event.quit()
     end
@@ -236,7 +251,7 @@ function menu:enterTeamSelection()
     self.escapePressed = function ()
         self:enterMapSelection()
     end
-    graphics.getModalLayout(self.teams, {self.startButton, ui.backButton, self.settingsButton,})
+    graphics.getModalLayout(self.teams, {self.startButton, ui.backButton})
     self.title = "Team"
 end
 
@@ -247,12 +262,6 @@ function menu:draw()
     if self.drawModal then
         ui.modal(self.title)
     end
-
-    -- setColor(colors.neutral)
-    -- if mouse then
-    --     love.graphics.print(tostring(mouse.hoveringModalScissor), 10, 10)
-    -- end
-
     setColor(previousColor)
 end
 
@@ -279,8 +288,12 @@ function menu:resize()
 end
 
 function menu:leave()
+    self.settings = {}
     mouse.setCursor("arrow")
     graphics.buttons = {}
+    for _, button in ipairs(self.teams) do
+        resetButton(button)
+    end
 end
 
 return menu

@@ -14,20 +14,30 @@ function M.mouseHover(x, y, rectangle)
     return x > rectangle.x and x < rectangle.x + rectangle.w and y > rectangle.y and y < rectangle.y + rectangle.h
 end
 
-local states = {}
-
 M.mouseMap = {
 --==================================================--
     [1] = { -- left click
         pressed = function (x, y, g)
+            if g.input.hoveredSquadId then
+                local clickedSquad = g.localPlayer.squads[g.input.hoveredSquadId]
+
+                if love.keyboard.isDown("lshift") then
+                    if clickedSquad then
+                        clickedSquad.selected = not clickedSquad.selected
+                    end
+                else
+                    for _, squad in ipairs(g.localPlayer.squads) do
+                        squad.selected = squad == clickedSquad
+                    end
+                end
+            end
+
             local wx, wy = g.camera:worldCoords(x, y)
 
             -- check if a dood was clicked
             local clickedDood
-            if g.hoveredDood then
-                clickedDood = g.hoveredDood
-            elseif g.hoveredInfoBarDood then
-                clickedDood = g.hoveredInfoBarDood
+            if g.input.hoveredDood then
+                clickedDood = g.input.hoveredDood
             end
             -- toggle player control
             if love.keyboard.isDown("lctrl") then
@@ -70,21 +80,21 @@ M.mouseMap = {
             end
 
             if clickedDood == nil then
-                states.leftClickDown = true
-                g.selectionBox.startX = wx
-                g.selectionBox.startY = wy
+                g.input.leftClickDown = true
+                g.input.selectionBox.startX = wx
+                g.input.selectionBox.startY = wy
             end
         end,
 
         released = function (x, y, g)
             -- select doods inside selection box
-            if states.leftClickDown then
+            if g.input.leftClickDown then
                 for _, d in ipairs(g.doods) do
-                    d.selected = d.insideSelectionBox and not d.playerControlled
+                    d.selected = d.insideSelectionBox and not d.playerControlled and d.state ~= "downed"
                     d.insideSelectionBox = false
                 end
-                states.leftClickDown = false
-                g.selectionBox = {}
+                g.input.leftClickDown = false
+                g.input.selectionBox = {}
                 graphics.getinfoBarLayout(g)
             end
         end,
@@ -92,11 +102,11 @@ M.mouseMap = {
 --==================================================--
     [2] = { -- right click
         released = function (x, y, g)
-            if g.hoveringInfoBar then return end
-            local wx, wy = g.mouseWorldX, g.mouseWorldY
+            if g.input.hoveringInfoBar then return end
+            local wx, wy = g.input.mouseWorldX, g.input.mouseWorldY
             local clickedDood
-            if g.hoveredDood then
-                clickedDood = g.hoveredDood
+            if g.input.hoveredDood then
+                clickedDood = g.input.hoveredDood
             end
 
             for _, d in ipairs(g.doods) do
@@ -123,12 +133,12 @@ M.mouseMap = {
 --==================================================--
     [3] = { -- middle mouse button
         pressed = function (x, y, g)
-            states.middleMouseDown = true
+            g.input.middleMouseDown = true
             M.setCursor("sizeall")
         end,
 
         released = function (x, y, g)
-            states.middleMouseDown = false
+            g.input.middleMouseDown = false
             M.setCursor("arrow")
 
         end,
@@ -144,7 +154,7 @@ function M.mousepressed(x, y, button, g)
     if action and action.pressed then
         action.pressed(x, y, g)
     end
-    if not g.hoveringInfoBar then
+    if not g.input.hoveringInfoBar then
         graphics.infoBarScissorOffset = 0
     end
     graphics.getinfoBarLayout(g)
@@ -158,42 +168,42 @@ function M.mousereleased(x, y, button, g)
 end
 
 function M.mousemoved(x, y, dx, dy, g)
-    g.hoveredSquadButton = nil
-    g.hoveringInfoBar = M.mouseHover(x, y, graphics.infoBarContainer)
-    g.hoveredDood = nil
-    g.mouseWorldX, g.mouseWorldY = g.camera:worldCoords(x, y)
+    g.input.hoveredSquadId = nil
+    g.input.hoveringInfoBar = M.mouseHover(x, y, graphics.infoBarContainer)
+    g.input.hoveredDood = nil
+    g.input.mouseWorldX, g.input.mouseWorldY = g.camera:worldCoords(x, y)
 
     -- selection box
-    if states.leftClickDown then
-        g.selectionBox.x = math.min(g.selectionBox.startX, g.mouseWorldX)
-        g.selectionBox.y = math.min(g.selectionBox.startY, g.mouseWorldY)
-        g.selectionBox.w = math.abs(g.mouseWorldX - g.selectionBox.startX)
-        g.selectionBox.h = math.abs(g.mouseWorldY - g.selectionBox.startY)
+    if g.input.leftClickDown then
+        g.input.selectionBox.x = math.min(g.input.selectionBox.startX, g.input.mouseWorldX)
+        g.input.selectionBox.y = math.min(g.input.selectionBox.startY, g.input.mouseWorldY)
+        g.input.selectionBox.w = math.abs(g.input.mouseWorldX - g.input.selectionBox.startX)
+        g.input.selectionBox.h = math.abs(g.input.mouseWorldY - g.input.selectionBox.startY)
     end
 
     -- middle mouse panning
-    if states.middleMouseDown then
+    if g.input.middleMouseDown then
         g.camera:lookAt(g.camera.x - dx, g.camera.y - dy)
     end
 
     dood.getHoveredDood(x, y, g)
 
-    -- if g.hoveringInfoBar then
-    --     for _, squad in ipairs(g.player.squads) do
-    --         squad.infoBarButton.hovered = M.mouseHover(x, y, squad.infoBarButton.box)
-    --         if squad.infoBarButton.hovered then
-    --             g.hoveredSquadButton = squad
-    --             states.hoveringAny = true
-    --         end
-    --     end
-    -- end
+    if g.input.hoveringInfoBar then
+        for i, squad in ipairs(g.localPlayer.squads) do
+            squad.infoBarButton.hovered = M.mouseHover(x, y, squad.infoBarButton.box) and g.input.hoveringInfoBar
+            if squad.infoBarButton.hovered then
+                g.input.hoveredSquadId = i
+                g.input.hoveringAny = true
+            end
+        end
+    end
 
-    if not g.draggingSelectionBox and not g.mouseStates.middleMouseDown then
-        if states.hoveringAny then
+    if not g.input.leftClickDown and not g.input.middleMouseDown then
+        if g.input.hoveringAny then
             M.setCursor("hand")
         else
             M.setCursor("arrow")
-            states.hoveringAny = false
+            g.input.hoveringAny = false
         end
     end
 end
@@ -250,7 +260,5 @@ function M.modalMousemoved(x, y, state)
     M.hoveringModalScissor = M.mouseHover(x, y, graphics.buttonScissor)
     M.resolveModalButtonHover(x, y, state)
 end
-
-M.states = states
 
 return M

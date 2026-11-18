@@ -14,18 +14,24 @@ for i, font in pairs(M.fonts) do
     M.fontHeights[i] = font:getHeight()
 end
 
+local hudTransparency = 0.8
+
 M.colors = {
     neutral =              {1, 1, 1, 1},
     dimNeutral =           {0.7, 0.7, 0.7, 1},
     transparentGray =      {0, 0, 0, 0.25},
     selectionBoxOutline =  {0.1, 1, 0.1, 1},
     selectionBoxFill =     {0.1, 1, 0.1, 0.1},
-    blue =                 {0.2, 0.35, 0.5},
-    red =                  {0.6, 0.2, 0.2},
-    yellow =               {0.55, 0.5, 0.1},
-    green =                {0.35, 0.55, 0.15},
+    Blue =                 {0.2, 0.35, 0.5},
+    BlueHud =              {0.2, 0.35, 0.5, hudTransparency},
+    Red =                  {0.6, 0.2, 0.2},
+    RedHud =               {0.6, 0.2, 0.2, hudTransparency},
+    Yellow =               {0.55, 0.5, 0.1},
+    YellowHud =            {0.55, 0.5, 0.1, hudTransparency},
+    Green =                {0.35, 0.55, 0.15},
+    GreenHud =             {0.35, 0.55, 0.15, hudTransparency},
 }
-M.backgrounds = {M.colors.blue, M.colors.red, M.colors.yellow, M.colors.green}
+M.backgrounds = {M.colors.Blue, M.colors.Red, M.colors.Yellow, M.colors.Green}
 
 M.maxScissorOffset = 0
 M.buttonScissorOffset = 0
@@ -44,6 +50,7 @@ function M.getScreen()
 end
 
 function M.getinfoBarLayout(g)
+    M.infoBarDoods = {}
     M.infoBarContainer = {}
     M.selectedDoods = {}
     M.getScreen()
@@ -68,39 +75,37 @@ function M.getinfoBarLayout(g)
         h = M.squadsContainer.h
     }
 
-    -- if g.player.squads then
-    --     for i, squad in ipairs(g.player.squads) do
-    --         local height = M.fontHeights.squadButtons + 10
-    --         local offset = height * i
-    --         squad.infoBarButton = {
-    --             box = {
-    --                 x = M.squadsContainer.x,
-    --                 y = M.squadsContainer.y + offset - 20,
-    --                 w = M.squadsContainer.w,
-    --                 h = height,
-    --             },
-    --         }
-    --         squad.infoBarButton.labelY = squad.infoBarButton.box.y + (squad.infoBarButton.box.h / 2) - (M.fontHeights.slabsInfoBar / 2)
-    --     end
-    -- end
+    if g.localPlayer.squads then
+        for i, squad in ipairs(g.localPlayer.squads) do
+            local height = M.fontHeights.squadButtons + 10
+            local offset = height * i
+            squad.infoBarButton = {
+                box = {
+                    x = M.squadsContainer.x,
+                    y = M.squadsContainer.y + offset - 20,
+                    w = M.squadsContainer.w,
+                    h = height,
+                },
+            }
+            squad.infoBarButton.labelY = squad.infoBarButton.box.y + (squad.infoBarButton.box.h / 2) - (M.fontHeights.slabsInfoBar / 2)
 
-    if g.doods then
-        for _, d in ipairs(g.doods) do
-            if d.selected then
-                table.insert(M.selectedDoods, d)
+            if squad.selected and squad.doodIds and #squad.doodIds > 0 then
+                for _, doodId in ipairs(squad.doodIds) do
+                    table.insert(M.infoBarDoods, doodId)
+                end
             end
         end
-    end
 
-    for i, d in ipairs(M.selectedDoods) do
-        local size = 126
-        local offset = size * i
-        d.infoBarBox = {
-            x = M.squadsContainer.x + M.squadsContainer.w + offset - 100 - M.infoBarScissorOffset,
-            y = M.infoBarContainer.centerY - size / 2,
-            w = size,
-            h = size,
-        }
+        for i, doodId in ipairs(M.infoBarDoods) do
+            local size = 126
+            local offset = size * i
+            g.doods[doodId].infoBarBox = {
+                x = M.squadsContainer.x + M.squadsContainer.w + offset - 100 - M.infoBarScissorOffset,
+                y = M.infoBarContainer.centerY - size / 2,
+                w = size,
+                h = size,
+            }
+        end
     end
 end
 
@@ -154,7 +159,7 @@ function M.getModalLayout(mainButtons, bottomButtons)
                 button.box = {
                 x = M.modalContainer.x + buttonPadding + button.offset - (M.buttonScissor.w / 2),
             }
-            elseif #M.bottomButtons >= 3 then
+            elseif #M.bottomButtons == 3 then
                 button.offset = i * bottomButtonW
                 button.box = {
                 x = M.modalContainer.x + buttonPadding + button.offset - (bottomButtonW * 1.5),

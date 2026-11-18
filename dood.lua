@@ -11,7 +11,7 @@ love.graphics.setDefaultFilter("nearest", "nearest")
 
 --animations
 local animationConfigs = {
-    colors = {"blue", "red", "green", "yellow"},
+    colors = {"Blue", "Red", "Green", "Yellow"},
 
     states = {
         idle = {
@@ -37,7 +37,7 @@ local animationConfigs = {
     },
 }
 
-local doodAnimations = {blue = {}, red = {}, green = {}, yellow = {}}
+local doodAnimations = {Blue = {}, Red = {}, Green = {}, Yellow = {}}
 
 local COLLISION_RADIUS_RATIO = 0.1
 local NAVIGATION_MARGIN = 2
@@ -96,13 +96,13 @@ M.DEFAULTS = {
 }
 
 function M.getHoveredDood(x, y, g)
-    g.mouseStates.hoveringAny = false
+    g.input.hoveringAny = false
     local frontDepth = -math.huge
     for _, d in ipairs(g.doods) do
-        d.hovered = (insideRectangle(g.mouseWorldX, g.mouseWorldY, d.box) and d.sortY and d.sortY > frontDepth) or insideRectangle(x, y, d.infoBarBox)
+        d.hovered = (insideRectangle(g.input.mouseWorldX, g.input.mouseWorldY, d.box) and d.sortY and d.sortY > frontDepth)
         if d.hovered then
-            g.mouseStates.hoveringAny = true
-            g.hoveredDood = d
+            g.input.hoveringAny = true
+            g.input.hoveredDood = d
             frontDepth = d.sortY
         end
     end
@@ -519,24 +519,25 @@ function M.update(dt, g)
                             M.healTarget(d, dt, d.rescueTarget)
                         end
                     elseif d.priority == "Medic" then
-                        local closestFriendlyShrineDis = closestFriendlyShrine.dis
-                        local closestFriendlyShrineRadius = g.shrines[closestFriendlyShrine.index].shape:getRadius()
+                        M.healTarget(d, dt, d.rescueTarget)
+                        -- local closestFriendlyShrineDis = closestFriendlyShrine.dis
+                        -- local closestFriendlyShrineRadius = g.shrines[closestFriendlyShrine.index].shape:getRadius()
 
-                        if not closestEnemy.index or closestEnemy.dis > M.DEFAULTS.SAFE_RESCUE_DISTANCE or closestFriendlyShrineDis <= closestFriendlyShrineRadius then
-                            M.healTarget(d, dt, d.rescueTarget)
+                        -- if not closestEnemy.index or closestEnemy.dis > M.DEFAULTS.SAFE_RESCUE_DISTANCE or closestFriendlyShrineDis <= closestFriendlyShrineRadius then
+                        --     M.healTarget(d, dt, d.rescueTarget)
 
-                        elseif not d.rescueTarget.joint and not d.rescueTarget.puller then
-                            d.rescueTarget.joint = love.physics.newDistanceJoint(d.body, d.rescueTarget.body, d.bodyX, d.bodyY, d.rescueTarget.bodyX, d.rescueTarget.bodyY, false)
-                            d.rescueTarget.puller = d
+                        -- elseif not d.rescueTarget.joint and not d.rescueTarget.puller then
+                        --     d.rescueTarget.joint = love.physics.newDistanceJoint(d.body, d.rescueTarget.body, d.bodyX, d.bodyY, d.rescueTarget.bodyX, d.rescueTarget.bodyY, false)
+                        --     d.rescueTarget.puller = d
 
-                            if d.rescueTarget.joint and d.rescueTarget.puller == d then
-                                d.state = "pulling"
-                                if closestFriendlyShrine then
-                                    d.moveTargetX, d.moveTargetY = closestFriendlyShrine.x, closestFriendlyShrine.y
-                                    d.targetRescueShrine = g.shrines[closestFriendlyShrine.index]
-                                end
-                            end
-                        end
+                        --     if d.rescueTarget.joint and d.rescueTarget.puller == d then
+                        --         d.state = "pulling"
+                        --         if closestFriendlyShrine then
+                        --             d.moveTargetX, d.moveTargetY = closestFriendlyShrine.x, closestFriendlyShrine.y
+                        --             d.targetRescueShrine = g.shrines[closestFriendlyShrine.index]
+                        --         end
+                        --     end
+                        -- end
 
                     elseif d.priority == "Nearest" then
                         M.healTarget(d, dt, d.rescueTarget)
@@ -640,8 +641,10 @@ function M.update(dt, g)
         end
 
         -- check if inside selection box
-        g.draggingSelectionBox = g.mouseStates.leftClickDown and g.selectionBox.w ~= nil or g.selectionBox.h ~= nil
-        d.insideSelectionBox = g.draggingSelectionBox and insideRectangle(d.bodyX, d.bodyY, g.selectionBox)
+        -- g.draggingSelectionBox = g.mouseStates.leftClickDown and g.selectionBox.w ~= nil or g.selectionBox.h ~= nil
+        if g.input.selectionBox and (g.input.selectionBox.w ~= nil or g.input.selectionBox.h ~= nil) then
+            d.insideSelectionBox = g.input.leftClickDown and insideRectangle(d.bodyX, d.bodyY, g.input.selectionBox)
+        end
 
         -- animations
         local animateSpeed = 0.2
@@ -687,7 +690,7 @@ function M.newDood(x, y, color, g)
         maxHp = M.DEFAULTS.HP,
         damage = M.DEFAULTS.DAMAGE,
         moveSpeed = M.DEFAULTS.MOVE_SPEED,
-        priority = "Medic",
+        priority = "Default",
         state = "idle",
         dir = "down",
         x = bodyX - spriteW * scale / 2,
@@ -727,6 +730,8 @@ function M.newDood(x, y, color, g)
     M.getDoodBox(dood)
     table.insert(g.doods, dood)
     M.getHoveredDood(x, y, g)
+
+    return dood.index
 end
 
 return M
