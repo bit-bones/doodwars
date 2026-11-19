@@ -21,24 +21,6 @@ local symbolColors = {
 
 local M = {}
 
-function M.getShrineBox(s)
-    local fw, fh = s.animation[s.dir]:getDimensions() -- get animation frame dimensions
-    local sw =  fw * s.scale -- multiply by dood scale to get current sprite dimensions
-    local sh = fh * s.scale
-    local bw = sw * 0.4      -- multiply by shrink factor to get box dimensions
-    local bh = sh * 0.5
-    local bx = s.x + (sw - bw) / 2
-    local by = s.y + (sh - bh) / 2
-    s.box = {
-        x = bx,
-        y = by,
-        w = bw,
-        h = bh,
-        centerX = bx + bw / 2,
-        centerY = by + bh / 2,
-    }
-end
-
 local function drawTilesNearShrine(layer, shrine, tint, map)
     if not layer then return end
     setColor(tint)

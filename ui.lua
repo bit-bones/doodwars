@@ -27,7 +27,7 @@ function M.infoBar(g)
     local doodsContainer = graphics.doodsContainer
 
     -- background
-    setColor(colors.RedHud)
+    setColor((colors[g.localPlayer.team.."Hud"] or colors.neutralHud))
     rectangle("fill", container.x, container.y, container.w, container.h)
     setColor(0, 0, 0, 0.2)
     rectangle("fill", squadsContainer.x, squadsContainer.y, squadsContainer.w, squadsContainer.h)

@@ -1,11 +1,11 @@
 local anim8 = require("libs/anim8")
 
-local function insideRectangle(x, y, rectangle)
-    if rectangle == nil then
-        return false
-    end
-    return x > rectangle.x and x < rectangle.x + rectangle.w and y > rectangle.y and y < rectangle.y + rectangle.h
-end
+-- local function insideRectangle(x, y, rectangle)
+--     if rectangle == nil then
+--         return false
+--     end
+--     return x > rectangle.x and x < rectangle.x + rectangle.w and y > rectangle.y and y < rectangle.y + rectangle.h
+-- end
 
 love.graphics.setDefaultFilter("nearest", "nearest")
 
@@ -95,18 +95,18 @@ M.DEFAULTS = {
     SAFE_RESCUE_DISTANCE = 500,
 }
 
-function M.getHoveredDood(x, y, g)
-    g.input.hoveringAny = false
-    local frontDepth = -math.huge
-    for _, d in ipairs(g.doods) do
-        d.hovered = (insideRectangle(g.input.mouseWorldX, g.input.mouseWorldY, d.box) and d.sortY and d.sortY > frontDepth)
-        if d.hovered then
-            g.input.hoveringAny = true
-            g.input.hoveredDood = d
-            frontDepth = d.sortY
-        end
-    end
-end
+-- function M.getHoveredDood(x, y, g)
+--     g.input.hoveringAny = false
+--     local frontDepth = -math.huge
+--     for _, d in ipairs(g.doods) do
+--         d.hovered = (insideRectangle(g.input.mouseWorldX, g.input.mouseWorldY, d.box) and d.sortY and d.sortY > frontDepth)
+--         if d.hovered then
+--             g.input.hoveringAny = true
+--             g.input.hoveredDood = d
+--             frontDepth = d.sortY
+--         end
+--     end
+-- end
 
 function M.getNavigationClearance(color, scale)
     local spriteW = doodAnimations[color].idle.down:getDimensions()
@@ -640,12 +640,6 @@ function M.update(dt, g)
             end
         end
 
-        -- check if inside selection box
-        -- g.draggingSelectionBox = g.mouseStates.leftClickDown and g.selectionBox.w ~= nil or g.selectionBox.h ~= nil
-        if g.input.selectionBox and (g.input.selectionBox.w ~= nil or g.input.selectionBox.h ~= nil) then
-            d.insideSelectionBox = g.input.leftClickDown and insideRectangle(d.bodyX, d.bodyY, g.input.selectionBox)
-        end
-
         -- animations
         local animateSpeed = 0.2
         d.animation[d.dir]:update(animateSpeed * dt)
@@ -658,7 +652,7 @@ function M.update(dt, g)
     end
 end
 
-function M.newDood(x, y, color, g)
+function M.newDood(x, y, color, g, ownerId, squadId)
     local animations = {
         idle = cloneAnimationSet(doodAnimations[color].idle),
         walk = cloneAnimationSet(doodAnimations[color].walk),
@@ -686,6 +680,8 @@ function M.newDood(x, y, color, g)
     fixture:setFriction(0)
 
     local dood = {
+        ownerId = ownerId,
+        squadId = squadId,
         hp = M.DEFAULTS.HP,
         maxHp = M.DEFAULTS.HP,
         damage = M.DEFAULTS.DAMAGE,
@@ -729,7 +725,8 @@ function M.newDood(x, y, color, g)
     dood.name = "Dood "..tostring(dood.index)
     M.getDoodBox(dood)
     table.insert(g.doods, dood)
-    M.getHoveredDood(x, y, g)
+    table.insert(g.players[dood.ownerId].squads[dood.squadId].doodIds, dood.index)
+    -- M.getHoveredDood(x, y, g)
 
     return dood.index
 end

@@ -138,21 +138,21 @@ function menu:init()
             fn = function ()
                 self.settings.chosenGamemode = "Sandbox"
                 self:enterMapSelection()
-                self.settings.players = {
-                    [1] = {
-                        type = "You",
-                        team = "none",
-                        squads = {
-                            {label = "Blue"},
-                            {label = "Red"},
-                            {label = "Green"},
-                            {label = "Yellow"},
-                        }
+                self.settings.players[1] = {
+                    type = "You",
+                    team = "none",
+                    squads = {
+                        {label = "Blue", doodIds = {}},
+                        {label = "Red", doodIds = {}},
+                        {label = "Green", doodIds = {}},
+                        {label = "Yellow", doodIds = {}},
                     },
-                    [2] = nil,
-                    [3] = nil,
-                    [4] = nil,
+                    -- [2] = nil,
+                    -- [3] = nil,
+                    -- [4] = nil,
                 }
+
+
             end
         },
         {

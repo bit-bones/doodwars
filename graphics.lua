@@ -22,6 +22,7 @@ M.colors = {
     transparentGray =      {0, 0, 0, 0.25},
     selectionBoxOutline =  {0.1, 1, 0.1, 1},
     selectionBoxFill =     {0.1, 1, 0.1, 0.1},
+    neutralHud =           {0.7, 0.7, 0.7, hudTransparency},
     Blue =                 {0.2, 0.35, 0.5},
     BlueHud =              {0.2, 0.35, 0.5, hudTransparency},
     Red =                  {0.6, 0.2, 0.2},
@@ -171,6 +172,17 @@ function M.getModalLayout(mainButtons, bottomButtons)
             button.textY = button.box.y + button.box.h / 4
         end
     end
+end
+
+function M.rectangle(mode, x, y, width, height, rx, ry, segments)
+    if type(x) == "table" then
+        local box = x
+        x = box.x
+        y = box.y
+        width = box.w
+        height = box.h
+    end
+    love.graphics.rectangle(mode, x, y, width, height, rx, ry, segments)
 end
 
 function M.getColor()

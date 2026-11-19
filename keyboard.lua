@@ -24,16 +24,34 @@ M.keymap = {
 --==================================================--
     space = {
         pressed = function (g)
-            local c
-            if love.keyboard.isDown("b") then c = "Blue"
-            elseif love.keyboard.isDown("r") then c = "Red"
-            elseif love.keyboard.isDown("g") then c = "Green"
-            elseif love.keyboard.isDown("y") then c = "Yellow"
+            local color
+            local colorId
+            if love.keyboard.isDown("b") then
+                color = "Blue"
+                colorId = 1
+            elseif love.keyboard.isDown("r") then
+                color = "Red"
+                colorId = 2
+            elseif love.keyboard.isDown("g") then
+                color = "Green"
+                colorId = 3
+            elseif love.keyboard.isDown("y") then
+                color = "Yellow"
+                colorId = 4
             -- elseif love.keyboard.isDown("n") then c = "neutral"
             end
-            if c then
-                local index = dood.newDood(g.input.mouseWorldX, g.input.mouseWorldY, c, g)
-                table.insert(g.localPlayer.squads[#g.localPlayer.squads], index)
+            if color then
+                if g.gamemode == "Sandbox" then
+                    dood.newDood(g.input.mouseWorldX, g.input.mouseWorldY, color, g, 1, colorId)
+                    -- table.insert(g.localPlayer.squads[colorId].doodIds, doodId)
+                else
+                    for playerId, player in ipairs(g.players) do
+                        if player.team == color and player.type ~= "Empty" then
+                            dood.newDood(g.input.mouseWorldX, g.input.mouseWorldY, color, g, colorId, 1)
+                            -- table.insert(player.squads[1].doodIds, doodId)
+                        end
+                    end
+                end
                 graphics.getinfoBarLayout(g)
             end
         end,

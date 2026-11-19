@@ -95,7 +95,7 @@ M.mouseMap = {
                 end
                 g.input.leftClickDown = false
                 g.input.selectionBox = {}
-                graphics.getinfoBarLayout(g)
+                -- graphics.getinfoBarLayout(g)
             end
         end,
     },
@@ -149,6 +149,36 @@ M.mouseMap = {
 
 
 -- game
+function M.getHoveredDood(x, y, g)
+    g.input.hoveringAny = false
+    g.input.hoveredDood = nil
+    local hoveredInfoBarDood
+    if not g.input.leftClickDown then
+        for _, doodId in ipairs(graphics.infoBarDoods) do
+            local d = g.doods[doodId]
+            if M.mouseHover(x, y, d.infoBarBox) then
+                hoveredInfoBarDood = d
+                break
+            end
+        end
+        local frontDepth = -math.huge
+        for _, d in ipairs(g.doods) do
+            local worldBoxHovered = false
+            if not hoveredInfoBarDood and not g.input.leftClickDown then
+                worldBoxHovered = M.mouseHover(g.input.mouseWorldX, g.input.mouseWorldY, d.box) and d.sortY and d.sortY > frontDepth
+                if worldBoxHovered then
+                    frontDepth = d.sortY
+                end
+            end
+            d.hovered = d == hoveredInfoBarDood or worldBoxHovered
+            if d.hovered then
+                g.input.hoveringAny = true
+                g.input.hoveredDood = d
+            end
+        end
+    end
+end
+
 function M.mousepressed(x, y, button, g)
     local action = M.mouseMap[button]
     if action and action.pressed then
@@ -169,9 +199,14 @@ end
 
 function M.mousemoved(x, y, dx, dy, g)
     g.input.hoveredSquadId = nil
-    g.input.hoveringInfoBar = M.mouseHover(x, y, graphics.infoBarContainer)
-    g.input.hoveredDood = nil
+    g.input.hoveringDoodsContainer = M.mouseHover(x, y, graphics.doodsContainer)
+    g.input.hoveringSquadsContainer = M.mouseHover(x, y, graphics.squadsContainer)
     g.input.mouseWorldX, g.input.mouseWorldY = g.camera:worldCoords(x, y)
+
+    -- middle mouse panning
+    if g.input.middleMouseDown then
+        g.camera:lookAt(g.camera.x - dx, g.camera.y - dy)
+    end
 
     -- selection box
     if g.input.leftClickDown then
@@ -181,14 +216,9 @@ function M.mousemoved(x, y, dx, dy, g)
         g.input.selectionBox.h = math.abs(g.input.mouseWorldY - g.input.selectionBox.startY)
     end
 
-    -- middle mouse panning
-    if g.input.middleMouseDown then
-        g.camera:lookAt(g.camera.x - dx, g.camera.y - dy)
-    end
+    M.getHoveredDood(x, y, g)
 
-    dood.getHoveredDood(x, y, g)
-
-    if g.input.hoveringInfoBar then
+    if g.input.hoveringSquadsContainer then
         for i, squad in ipairs(g.localPlayer.squads) do
             squad.infoBarButton.hovered = M.mouseHover(x, y, squad.infoBarButton.box) and g.input.hoveringInfoBar
             if squad.infoBarButton.hovered then
@@ -203,7 +233,6 @@ function M.mousemoved(x, y, dx, dy, g)
             M.setCursor("hand")
         else
             M.setCursor("arrow")
-            g.input.hoveringAny = false
         end
     end
 end

@@ -17,6 +17,7 @@ local colors = graphics.colors
 local getColor = graphics.getColor
 local setColor = graphics.setColor
 local fonts = graphics.fonts
+local rectangle = graphics.rectangle
 
 function game:enter(previous, settings)
     love.physics.setMeter(32)
@@ -100,6 +101,15 @@ function game:enter(previous, settings)
                 local shape = love.physics.newCircleShape(0, 0, 50)
                 local fixture = love.physics.newFixture(body, shape, 0)
 
+                local fw = shape:getRadius()
+                local fh = fw
+                -- local sw =  fw * s.scale -- multiply by dood scale to get current sprite dimensions
+                -- local sh = fh * s.scale
+                local bw = fw * 0.4
+                local bh = fh * 0.5
+                local bx = x + (fw - bw) / 2
+                local by = y + (fh - bh) / 2
+
                 table.insert(self.data.shrines, {
                     x = x,
                     y = y,
@@ -111,6 +121,12 @@ function game:enter(previous, settings)
                     body = body,
                     shape = shape,
                     fixture = fixture,
+                    box = {
+                        x = bx,
+                        y = by,
+                        w = bw,
+                        h = bh,
+                    }
                 })
 
                 table.insert(self.data.bases, {
@@ -170,6 +186,9 @@ function game:enter(previous, settings)
             items[#items + 1] = {
                 sortY = sortY,
                 draw = function()
+                    -- if gameData.input.altToggle > 0 then
+                    --     graphics.rectangle("line", s.box)
+                    -- end
                     setColor(colors.neutral)
                     shrineRegistry.drawShrine(currentShrine, gameData)
                 end,
@@ -216,7 +235,6 @@ function game:enter(previous, settings)
         table.sort(items, function(a, b)
             return a.sortY < b.sortY
         end)
-
         for _, item in ipairs(items) do
             item.draw()
         end
@@ -224,6 +242,7 @@ function game:enter(previous, settings)
         setColor(colors.neutral)
     end
 
+    -- player setup and spawning
     local spawnCoords = {
         {x = 220, y = 220},
         {x = 1540, y = 220},
@@ -234,7 +253,7 @@ function game:enter(previous, settings)
     if self.data.gamemode == "Sandbox" then
         self.data.localPlayer = self.data.players[1]
     else
-        for i, player in ipairs(self.data.players) do
+        for playerId, player in ipairs(self.data.players) do
             if player.type ~= "Empty" then
                 player.ownedShrineIds = {}
                 player.selectedDoodIds = {}
@@ -245,10 +264,10 @@ function game:enter(previous, settings)
                 player.squads = {
                     {
                         label = "Squad 1",
-                        doodIds = {dood.newDood(spawn.x, spawn.y, player.team, self.data)},
+                        doodIds = {},
                     },
                 }
-                
+                dood.newDood(spawn.x, spawn.y, player.team, self.data, playerId, 1)
 
                 if player.type == "You" then
                     self.data.localPlayer = player
@@ -316,7 +335,8 @@ function game:draw()
     if altToggle > 1 then
         love.graphics.setFont(fonts.debugWorld)
         for i, s in ipairs(self.data.shrines) do
-            love.graphics.circle("line", s.x, s.y, s.shape:getRadius())
+            love.graphics.rectangle("line", s.box.x, s.box.y, s.box.w, s.box.h)
+            -- love.graphics.circle("line", s.x, s.y, s.shape:getRadius())
             love.graphics.print("index: "..i..
                                 "\nx: "..s.x..
                                 "\ny: "..s.y..
@@ -402,7 +422,7 @@ function game:draw()
     end
 
     -- box
-    if self.data.input.hoveredDood and not self.data.input.leftClickDown then
+    if self.data.input.hoveredDood then
         local d = self.data.input.hoveredDood
         local pc = graphics.getColor()
         graphics.setColor(d.boxColor)
@@ -498,8 +518,8 @@ function game:mousemoved(x, y, dx, dy)
 end
 
 function game:wheelmoved(x, y)
-    if self.data.input.hoveringInfoBar then
-        local maxScissorOffset = math.max(0, #graphics.selectedDoods * 126 - (graphics.infoBarContainer.w - graphics.squadsContainer.w))
+    if self.data.input.hoveringDoodsContainer then
+        local maxScissorOffset = math.max(0, #graphics.infoBarDoods * 126 - (graphics.infoBarContainer.w - graphics.squadsContainer.w))
         if y > 0 then
             graphics.infoBarScissorOffset = graphics.infoBarScissorOffset + 20
         elseif y < 0 then
