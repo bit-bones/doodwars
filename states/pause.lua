@@ -22,6 +22,15 @@ function pause:init()
             end,
         },
         {
+            label = "Restart",
+            fn = function ()
+                -- local game = require "states.game"
+                -- game:enter()
+                local menu = require "states.menu"
+                menu:startGame()
+            end
+        },
+        {
             label = "Main menu",
             fn = function ()
                 local menu = require "states.menu"

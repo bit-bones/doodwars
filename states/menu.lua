@@ -46,6 +46,7 @@ function menu:init()
                     end
                 end
                 self.settings.players[self.chosenTeamIndex] = {
+                    id = self.chosenTeamIndex,
                     type = "You",
                     team = self.chosenTeam,
                 }
@@ -60,6 +61,7 @@ function menu:init()
             label = "Bot",
             fn = function ()
                self.settings.players[self.chosenTeamIndex] = {
+                    id = self.chosenTeamIndex,
                     type = "Bot",
                     team = self.chosenTeam,
                 }
@@ -139,6 +141,7 @@ function menu:init()
                 self.settings.chosenGamemode = "Sandbox"
                 self:enterMapSelection()
                 self.settings.players[1] = {
+                    id = 1,
                     type = "You",
                     team = "none",
                     squads = {
@@ -195,6 +198,9 @@ function menu:init()
 end
 
 function menu:enter()
+    for _, button in ipairs(self.teams) do
+        resetButton(button)
+    end
     self.settings = {
         players = {
             {type = "Empty", team = "Blue"},
@@ -288,12 +294,8 @@ function menu:resize()
 end
 
 function menu:leave()
-    self.settings = {}
     mouse.setCursor("arrow")
     graphics.buttons = {}
-    for _, button in ipairs(self.teams) do
-        resetButton(button)
-    end
 end
 
 return menu

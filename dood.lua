@@ -717,16 +717,10 @@ function M.newDood(x, y, color, g, ownerId, squadId)
         shape = shape,
         fixture = fixture,
     }
-    -- if g.gamemode ~= "Sandbox" then
-    --     dood.squad = "All"
-    -- else
-    --     dood.squad = g.player.squads[dood.color]
-    -- end
     dood.name = "Dood "..tostring(dood.index)
     M.getDoodBox(dood)
     table.insert(g.doods, dood)
     table.insert(g.players[dood.ownerId].squads[dood.squadId].doodIds, dood.index)
-    -- M.getHoveredDood(x, y, g)
 
     return dood.index
 end

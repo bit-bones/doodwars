@@ -35,9 +35,6 @@ function game:enter(previous, settings)
         shrines = {},
         bases = {},
         props = {},
-        hud = {
-            infoBarDoods = {},
-        },
         input = {
             zoomSpeed = 0.15,
             keyPanSpeed = 150,
@@ -50,8 +47,6 @@ function game:enter(previous, settings)
 
     self.data.input.mouseWorldX, self.data.input.mouseWorldY = self.data.camera:worldCoords(love.mouse.getPosition())
     self.data.navigation = pathfun.Navigation(self.data.navmesh)
-    self.data.camera.x = 875
-    self.data.camera.y = 875
 
     local map = self.data.map
     map:box2d_init(self.data.world)
@@ -250,32 +245,40 @@ function game:enter(previous, settings)
         {x = 1540, y = 1540}
     }
 
+    local spawn = {x = map.width * map.tilewidth / 2, y = map.height * map.tileheight / 2}
+
     if self.data.gamemode == "Sandbox" then
         self.data.localPlayer = self.data.players[1]
     else
-        for playerId, player in ipairs(self.data.players) do
+        for i, player in ipairs(self.data.players) do
             if player.type ~= "Empty" then
+                player.id = i
                 player.ownedShrineIds = {}
-                player.selectedDoodIds = {}
                 player.controlledDoodId = nil
 
                 local index = love.math.random(1, #spawnCoords)
-                local spawn = table.remove(spawnCoords, index)
+                spawn = table.remove(spawnCoords, index)
                 player.squads = {
                     {
                         label = "Squad 1",
                         doodIds = {},
+                        selected = true,
+                    },
+                    {
+                        label = "+",
                     },
                 }
-                dood.newDood(spawn.x, spawn.y, player.team, self.data, playerId, 1)
+                dood.newDood(spawn.x, spawn.y, player.team, self.data, player.id, 1)
 
                 if player.type == "You" then
                     self.data.localPlayer = player
                 end
             end
-
         end
     end
+
+    self.data.camera.x = spawn.x
+    self.data.camera.y = spawn.y
 
     -- if #self.data.shrines > 0 then
     --     self.data.shrines[1].team = "blue"
@@ -330,6 +333,13 @@ function game:draw()
     end
 
     camera:attach()
+
+    if self.data.input.hoveredShrineId then
+        local shrine = self.data.shrines[self.data.input.hoveredShrineId]
+        if shrine.box then
+            rectangle("line", shrine.box)
+        end
+    end
 
     -- shrines
     if altToggle > 1 then
@@ -443,11 +453,10 @@ function game:draw()
                 end
 
                 if #vertices >= 6 then
-                    graphics.setColor(0.1, 0.9, 0.7, 0.18)
+                    graphics.setColor(0.1, 0.9, 0.7, 0.2)
                     love.graphics.polygon("fill", vertices)
-
-                    graphics.setColor(1, 0.8, 0.1, 0.9)
-                    love.graphics.polygon("line", vertices)
+                    -- graphics.setColor(1, 0.8, 0.1, 0.9)
+                    -- love.graphics.polygon("line", vertices)
                 end
             end
         end
@@ -473,11 +482,13 @@ function game:draw()
    self.data.camera:detach()
 
     -- hud
+    
     ui.infoBar(self.data)
+    ui.draggingBox(self.data)
 
     local controlledDood = self.data.controlledDood
     local controlledDoodIndex = controlledDood and controlledDood.index or "none"
-    local hoveredDood = self.data.hoveredDood
+    local hoveredDood = self.data.input.hoveredDood
     local hoveredDoodIndex = hoveredDood and hoveredDood.index or "none"
     love.graphics.setFont(fonts.debugHud)
     love.graphics.print("\nmouseX: "..math.floor(self.data.input.mouseWorldX)..
@@ -486,6 +497,8 @@ function game:draw()
                         "\ncontrolling dood: "..(controlledDoodIndex or "none")..
                         "\nalt toggle: "..altToggle..
                         "\nhovering info bar: "..(tostring(self.data.input.hoveringInfoBar) or "none")..
+                        "\nhovering doods cotainer: "..(tostring(self.data.input.hoveringDoodsContainer) or "none")..
+                        "\nhovering squads container: "..(tostring(self.data.input.hoveringSquadsContainer) or "none")..
                         "\nhovered dood: "..(hoveredDoodIndex or "none")..
                         "\nhovering any:"..(tostring(self.data.input.hoveringAny))
                         ,10, 30)
@@ -526,6 +539,18 @@ function game:wheelmoved(x, y)
             graphics.infoBarScissorOffset = graphics.infoBarScissorOffset - 20
         end
         graphics.infoBarScissorOffset = math.max(0, math.min(maxScissorOffset, graphics.infoBarScissorOffset))
+        graphics.getinfoBarLayout(self.data)
+        return
+    end
+    if self.data.input.hoveringSquadsContainer then
+        local buttonH = graphics.fontHeights.squadButtons + 10
+        local maxScissorOffset = math.max(0, (#self.data.localPlayer.squads + 1) * buttonH - graphics.squadsContainer.w)
+        if y > 0 then
+            graphics.squadsContainerScissorOffset = graphics.squadsContainerScissorOffset - 20
+        elseif y < 0 then
+            graphics.squadsContainerScissorOffset = graphics.squadsContainerScissorOffset + 20
+        end
+        graphics.squadsContainerScissorOffset = math.max(0, math.min(maxScissorOffset, graphics.squadsContainerScissorOffset))
         graphics.getinfoBarLayout(self.data)
         return
     end

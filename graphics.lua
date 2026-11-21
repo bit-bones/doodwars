@@ -22,7 +22,7 @@ M.colors = {
     transparentGray =      {0, 0, 0, 0.25},
     selectionBoxOutline =  {0.1, 1, 0.1, 1},
     selectionBoxFill =     {0.1, 1, 0.1, 0.1},
-    neutralHud =           {0.7, 0.7, 0.7, hudTransparency},
+    neutralHud =           {0.3, 0.3, 0.3, hudTransparency},
     Blue =                 {0.2, 0.35, 0.5},
     BlueHud =              {0.2, 0.35, 0.5, hudTransparency},
     Red =                  {0.6, 0.2, 0.2},
@@ -34,6 +34,7 @@ M.colors = {
 }
 M.backgrounds = {M.colors.Blue, M.colors.Red, M.colors.Yellow, M.colors.Green}
 
+M.squadsContainerScissorOffset = 0
 M.maxScissorOffset = 0
 M.buttonScissorOffset = 0
 M.titleSpacing = 50
@@ -43,6 +44,15 @@ M.modalContainer = {}
 
 local buttonPadding = 150
 local buttonH = M.fontHeights.slabsButtons * 2
+
+function M.getDraggingBox(x, y, g)
+    M.draggingBox = {
+        x = x,
+        y = y - 50,
+        w = 50,
+        h = 50,
+    }
+end
 
 function M.getScreen()
     M.screen.w, M.screen.h = love.graphics.getDimensions()
@@ -77,26 +87,24 @@ function M.getinfoBarLayout(g)
     }
 
     if g.localPlayer.squads then
+        local height = M.fontHeights.squadButtons + 10
         for i, squad in ipairs(g.localPlayer.squads) do
-            local height = M.fontHeights.squadButtons + 10
             local offset = height * i
             squad.infoBarButton = {
                 box = {
-                    x = M.squadsContainer.x,
-                    y = M.squadsContainer.y + offset - 20,
-                    w = M.squadsContainer.w,
+                    x = M.squadsContainer.x + 1,
+                    y = M.squadsContainer.y + offset - 20 - M.squadsContainerScissorOffset,
+                    w = M.squadsContainer.w - 2,
                     h = height,
                 },
             }
             squad.infoBarButton.labelY = squad.infoBarButton.box.y + (squad.infoBarButton.box.h / 2) - (M.fontHeights.slabsInfoBar / 2)
-
             if squad.selected and squad.doodIds and #squad.doodIds > 0 then
                 for _, doodId in ipairs(squad.doodIds) do
                     table.insert(M.infoBarDoods, doodId)
                 end
             end
         end
-
         for i, doodId in ipairs(M.infoBarDoods) do
             local size = 126
             local offset = size * i
@@ -174,15 +182,28 @@ function M.getModalLayout(mainButtons, bottomButtons)
     end
 end
 
-function M.rectangle(mode, x, y, width, height, rx, ry, segments)
+function M.printC(text, rectangle, textH)
+    local textY = rectangle.y + rectangle.h / 2 - textH / 2
+    love.graphics.printf(text, rectangle.x, textY, rectangle.w, "center")
+end
+
+local function getDimensionsFromTable(rectangle)
+    return rectangle.x, rectangle.y, rectangle.w, rectangle.h
+end
+
+function M.setScissor(x, y, w, h)
     if type(x) == "table" then
-        local box = x
-        x = box.x
-        y = box.y
-        width = box.w
-        height = box.h
+        x, y, w, h = getDimensionsFromTable(x)
     end
-    love.graphics.rectangle(mode, x, y, width, height, rx, ry, segments)
+    love.graphics.setScissor(x, y, w, h)
+end
+
+function M.rectangle(mode, x, y, w, h, rx, ry, segments)
+    if type(x) == "table" then
+        rx, ry, segments = y, w, h
+        x, y, w, h = getDimensionsFromTable(x)
+    end
+    love.graphics.rectangle(mode, x, y, w, h, rx, ry, segments)
 end
 
 function M.getColor()

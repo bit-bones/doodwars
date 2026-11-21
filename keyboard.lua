@@ -43,12 +43,10 @@ M.keymap = {
             if color then
                 if g.gamemode == "Sandbox" then
                     dood.newDood(g.input.mouseWorldX, g.input.mouseWorldY, color, g, 1, colorId)
-                    -- table.insert(g.localPlayer.squads[colorId].doodIds, doodId)
                 else
-                    for playerId, player in ipairs(g.players) do
+                    for _, player in ipairs(g.players) do
                         if player.team == color and player.type ~= "Empty" then
                             dood.newDood(g.input.mouseWorldX, g.input.mouseWorldY, color, g, colorId, 1)
-                            -- table.insert(player.squads[1].doodIds, doodId)
                         end
                     end
                 end

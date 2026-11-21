@@ -1,13 +1,12 @@
-local mouse = require "mouse"
-local graphics = require "graphics"
 local Gamestate = require "libs/hump/gamestate"
+local graphics = require "graphics"
 local fonts = graphics.fonts
 local fontHeights = graphics.fontHeights
 local colors = graphics.colors
 local getColor = graphics.getColor
 local setColor = graphics.setColor
-
-local rectangle = love.graphics.rectangle
+local rectangle = graphics.rectangle
+local setScissor = graphics.setScissor
 
 local M = {}
 
@@ -19,43 +18,59 @@ M.backButton = {
     end
 }
 
+function M.draggingBox(g)
+    if g.input.draggingInfoBarDoodId and love.mouse.isDown(1) and graphics.draggingBox then
+        local name = g.doods[g.input.draggingInfoBarDoodId].name
+        local pf = love.graphics.getFont()
+        local pc = getColor()
+        setColor(colors.transparentGray)
+        rectangle("fill", graphics.draggingBox)
+        setColor(colors.neutral)
+        love.graphics.setFont(fonts.slabsInfoBar)
+        graphics.printC(name, graphics.draggingBox, fontHeights.slabsInfoBar)
+        love.graphics.setFont(pf)
+        setColor(pc)
+    end
+end
+
 function M.infoBar(g)
     local previousFont = love.graphics.getFont()
     local previousColor = getColor()
-    local container = graphics.infoBarContainer
-    local squadsContainer = graphics.squadsContainer
-    local doodsContainer = graphics.doodsContainer
 
     -- background
     setColor((colors[g.localPlayer.team.."Hud"] or colors.neutralHud))
-    rectangle("fill", container.x, container.y, container.w, container.h)
-    setColor(0, 0, 0, 0.2)
-    rectangle("fill", squadsContainer.x, squadsContainer.y, squadsContainer.w, squadsContainer.h)
-    rectangle("fill", doodsContainer.x, doodsContainer.y, doodsContainer.w, doodsContainer.h)
+    rectangle("fill", graphics.infoBarContainer)
+    setColor(colors.transparentGray)
+    rectangle("fill", graphics.squadsContainer)
+    rectangle("fill", graphics.doodsContainer)
 
     -- squads container
-    love.graphics.setScissor(squadsContainer.x, squadsContainer.y, squadsContainer.w, squadsContainer.h)
+    setScissor(graphics.squadsContainer)
     setColor(colors.neutral)
     love.graphics.setFont(fonts.squadButtons)
     for _, squad in ipairs(g.localPlayer.squads) do
         local button = squad.infoBarButton
-        love.graphics.printf(squad.label, button.box.x, button.labelY, button.box.w, "center")
-        if button.hovered then
-            rectangle("line", button.box.x, button.box.y, button.box.w, button.box.h, 5, 5)
+        if squad.selected then
+            local pc = getColor()
+            setColor(colors.transparentGray)
+            rectangle("fill", button.box, 5, 5)
+            setColor(pc)
         end
+        love.graphics.printf(squad.label, button.box.x, button.labelY, button.box.w, "center")
+    end
+    if g.input.hoveredSquadId then
+        local button = g.localPlayer.squads[g.input.hoveredSquadId].infoBarButton
+        rectangle("line", button.box, 5, 5)
     end
 
     -- doods container
-    love.graphics.setScissor(doodsContainer.x, doodsContainer.y, doodsContainer.w, doodsContainer.h)
-    love.graphics.setLineWidth(3)
+    setScissor(graphics.doodsContainer)
     for _, doodId in ipairs(graphics.infoBarDoods) do
         local d = g.doods[doodId]
-        if d.hovered then
-            setColor(0.15, 0.15, 0.15, 0.9)
-            rectangle("fill", d.infoBarBox.x, d.infoBarBox.y, d.infoBarBox.w, d.infoBarBox.h)
+        if d.selected then
+            setColor(colors.transparentGray)
+            rectangle("fill", d.infoBarBox)
         end
-        setColor(colors[d.color])
-        rectangle("line", d.infoBarBox.x, d.infoBarBox.y, d.infoBarBox.w, d.infoBarBox.h)
         setColor(colors.neutral)
         d.animation[d.dir]:draw(
             d.animation.image,
@@ -67,26 +82,34 @@ function M.infoBar(g)
         love.graphics.printf(d.name, d.infoBarBox.x, d.infoBarBox.y + 5, d.infoBarBox.w, "center")
         love.graphics.printf(d.state, d.infoBarBox.x, d.infoBarBox.y + d.infoBarBox.h - fontHeights.slabsInfoBar - 5, d.infoBarBox.w, "center")
     end
+    if g.input.hoveredDood then
+        local d = g.input.hoveredDood
+        if g.localPlayer.squads[d.squadId].selected and d.ownerId == g.localPlayer.id then
+            love.graphics.setLineWidth(2)
+            setColor(d.boxColor or colors.neutral)
+            rectangle("line", d.infoBarBox)
+            love.graphics.setLineWidth(1)
+        end
+    end
 
-    love.graphics.setLineWidth(1)
-    love.graphics.setScissor()
     love.graphics.setFont(previousFont)
+    setScissor()
     setColor(previousColor)
 end
 
 function M.modal(titleText, tabs)
     local previousColor = getColor()
     local previousFont = love.graphics.getFont()
-    local container = graphics.modalContainer
+    local modalContainer = graphics.modalContainer
     local buttonScissor = graphics.buttonScissor
 
     setColor(colors.transparentGray)
-    rectangle("fill", container.x, container.y, container.w, container.h, 10, 10)
+    rectangle("fill", graphics.modalContainer, 10, 10)
     setColor(colors.neutral)
     love.graphics.setFont(fonts.slabsTitle)
-    love.graphics.printf(titleText, container.x, container.titleY, container.w, "center")
+    love.graphics.printf(titleText, modalContainer.x, modalContainer.titleY, modalContainer.w, "center")
     love.graphics.line(buttonScissor.x, buttonScissor.y, buttonScissor.x + buttonScissor.w, buttonScissor.y)
-    love.graphics.setScissor(buttonScissor.x, buttonScissor.y, buttonScissor.w, buttonScissor.h)
+    setScissor(buttonScissor)
     love.graphics.setFont(fonts.slabsButtons)
     for _, button in ipairs(graphics.mainButtons) do
         if button.drawFill then
@@ -97,7 +120,7 @@ function M.modal(titleText, tabs)
         end
         if button.hovered then
             local pc = getColor()
-            rectangle("line", button.box.x, button.box.y, button.box.w, button.box.h, 10, 10)
+            rectangle("line", button.box, 10, 10)
             setColor(pc)
         end
         if button.label then
@@ -116,7 +139,7 @@ function M.modal(titleText, tabs)
             love.graphics.setFont(pf)
         end
     end
-    love.graphics.setScissor()
+    setScissor()
 
     if graphics.bottomButtons and #graphics.bottomButtons > 0 then
         setColor(colors.neutral)
@@ -124,7 +147,7 @@ function M.modal(titleText, tabs)
         love.graphics.line(buttonScissor.x, buttonScissor.y + buttonScissor.h, buttonScissor.x + buttonScissor.w, buttonScissor.y + buttonScissor.h)
         for _, button in ipairs(graphics.bottomButtons) do
             if button.hovered then
-                rectangle("line", button.box.x, button.box.y, button.box.w, button.box.h, 10, 10)
+                rectangle("line", button.box, 10, 10)
             end
             if button.label then
                 local pc = getColor()
