@@ -95,15 +95,14 @@ function game:enter(previous, settings)
                 body:setActive(false)
                 local shape = love.physics.newCircleShape(0, 0, 50)
                 local fixture = love.physics.newFixture(body, shape, 0)
-
-                local fw = shape:getRadius()
-                local fh = fw
-                -- local sw =  fw * s.scale -- multiply by dood scale to get current sprite dimensions
-                -- local sh = fh * s.scale
-                local bw = fw * 0.4
-                local bh = fh * 0.5
-                local bx = x + (fw - bw) / 2
-                local by = y + (fh - bh) / 2
+    
+                local bh = map.tileheight * 2
+                if object.properties.state == "upgraded" then
+                    bh = map.tileheight * 2.75
+                end
+                local by = y - bh + map.tileheight * 0.75
+                local bw = map.tilewidth * 2
+                local bx = x - bw / 2
 
                 table.insert(self.data.shrines, {
                     x = x,
@@ -181,9 +180,6 @@ function game:enter(previous, settings)
             items[#items + 1] = {
                 sortY = sortY,
                 draw = function()
-                    -- if gameData.input.altToggle > 0 then
-                    --     graphics.rectangle("line", s.box)
-                    -- end
                     setColor(colors.neutral)
                     shrineRegistry.drawShrine(currentShrine, gameData)
                 end,
@@ -249,6 +245,8 @@ function game:enter(previous, settings)
 
     if self.data.gamemode == "Sandbox" then
         self.data.localPlayer = self.data.players[1]
+        self.data.camera.x = spawn.x
+        self.data.camera.y = spawn.y
     else
         for i, player in ipairs(self.data.players) do
             if player.type ~= "Empty" then
@@ -272,13 +270,14 @@ function game:enter(previous, settings)
 
                 if player.type == "You" then
                     self.data.localPlayer = player
+                    self.data.camera.x = spawn.x
+                    self.data.camera.y = spawn.y
                 end
             end
         end
     end
 
-    self.data.camera.x = spawn.x
-    self.data.camera.y = spawn.y
+
 
     -- if #self.data.shrines > 0 then
     --     self.data.shrines[1].team = "blue"
@@ -334,14 +333,14 @@ function game:draw()
 
     camera:attach()
 
+    -- shrines
     if self.data.input.hoveredShrineId then
         local shrine = self.data.shrines[self.data.input.hoveredShrineId]
         if shrine.box then
-            rectangle("line", shrine.box)
+            rectangle("line", shrine.box.x, shrine.box.y, shrine.box.w, shrine.box.h)
         end
     end
 
-    -- shrines
     if altToggle > 1 then
         love.graphics.setFont(fonts.debugWorld)
         for i, s in ipairs(self.data.shrines) do
@@ -411,7 +410,7 @@ function game:draw()
                                 "\ncommand: "..(d.command or "none")..
                                 "\nstate: "..d.state..
                                 "\ndir: "..d.dir..
-                                "\ncolor: "..d.color..
+                                "\ncolor: "..d.team..
                                 "\nselected: "..tostring(d.selected)..
                                 "\ncontrolled: "..tostring(d.playerControlled)..
                                 "\nattackers: "..(attackerCount or "none")..
@@ -437,6 +436,14 @@ function game:draw()
         local pc = graphics.getColor()
         graphics.setColor(d.boxColor)
         love.graphics.rectangle("line", d.box.x, d.box.y, d.box.w, d.box.h)
+
+        love.graphics.setFont(fonts.slabsWorld)
+        ui.drawHealthBar(d.hp, d.maxHp, d.box.x - 5, d.box.y - 12, d.box.w + 10, 2)
+        if altToggle > 0 then
+            local textW = fonts.slabsWorld:getWidth(d.name)
+            love.graphics.printf(d.name, d.box.centerX - textW / 2, d.box.y - 22, textW, "center")
+        end
+        -- love.graphics.printf(d.state, d.box.x, d.box.y + d.box.h - graphics.fontHeights.slabsInfoBar - 5, d.box.w, "center")
         graphics.setColor(pc)
     end
 
@@ -481,8 +488,18 @@ function game:draw()
 
    self.data.camera:detach()
 
+    -- if self.data.input.hoveredDood then
+    --     local d = self.data.input.hoveredDood
+    --     local pc = graphics.getColor()
+    --     local x, y = camera:cameraCoords(d.box.x, d.box.y)
+
+    --     love.graphics.setFont(fonts.slabsInfoBar)
+    --     love.graphics.printf(d.name, x, y - 5, d.box.w, "center")
+    --     -- love.graphics.printf(d.state, d.box.x, d.box.y + d.box.h - graphics.fontHeights.slabsInfoBar - 5, d.box.w, "center")
+    --     graphics.setColor(pc)
+    -- end
+
     -- hud
-    
     ui.infoBar(self.data)
     ui.draggingBox(self.data)
 

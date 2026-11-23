@@ -87,7 +87,6 @@ function menu:init()
             label = "Local",
             fn = function ()
                 self.settings.chosenConnectionType = "Local"
-                -- self.availableModes = self.gamemodes
                 self:enterGamemodeSelection()
             end
         },
@@ -95,7 +94,6 @@ function menu:init()
             label = "Online",
             fn = function ()
                 self.settings.chosenConnectionType = "Online"
-                -- table.remove(self.availableModes, 1)
                 self:enterGamemodeSelection()
             end
         },
@@ -150,12 +148,7 @@ function menu:init()
                         {label = "Green", doodIds = {}},
                         {label = "Yellow", doodIds = {}},
                     },
-                    -- [2] = nil,
-                    -- [3] = nil,
-                    -- [4] = nil,
                 }
-
-
             end
         },
         {
@@ -166,8 +159,6 @@ function menu:init()
             end
         },
     }
-
-    -- self.availableModes = self.gamemodes
 
     self.mainButtons = {
         {

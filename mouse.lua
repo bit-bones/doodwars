@@ -155,6 +155,12 @@ M.mouseMap = {
         released = function (x, y, g)
             if g.input.hoveringInfoBar then return end
             local wx, wy = g.input.mouseWorldX, g.input.mouseWorldY
+
+            local clickedShrine
+            if g.input.hoveredShrineId then
+                clickedShrine = g.shrines[g.input.hoveredShrineId]
+            end
+
             local clickedDood
             if g.input.hoveredDood then
                 clickedDood = g.input.hoveredDood
@@ -163,12 +169,32 @@ M.mouseMap = {
             for _, d in ipairs(g.doods) do
                 if d.selected and d.state ~= "downed" then
                     if clickedDood then
-                        if clickedDood.color ~= d.color then
+                        if clickedDood.team ~= d.team then
                             dood.setAttackTarget(d, g, clickedDood.index)
                             d.command = "attack"
-                        elseif clickedDood ~= d and clickedDood.color == d.color and clickedDood.state == "downed" and clickedDood.puller == nil then
+                        elseif clickedDood ~= d and clickedDood.team == d.team and clickedDood.state == "downed" and clickedDood.puller == nil then
                             d.rescueTarget = clickedDood
                             d.command = "rescue"
+                        end
+                    elseif clickedShrine then
+                        if clickedShrine.team ~= d.team then
+                            if clickedShrine.state == "broken" then
+                                dood.setConvertTarget(d, g, clickedShrine.index)
+                            else
+                                dood.setAttackTarget(d, g, clickedShrine.index, "shrine")
+                                d.command = "attack shrine"
+                            end
+                        else
+                            if clickedShrine == "broken" or clickedShrine.hp < clickedShrine.maxHp then
+                                dood.setRepairTarget(d, g, clickedShrine.index)
+                                d.command = "repair shrine"
+                            else
+                                dood.clearTargets(d)
+                                d.route = nil
+                                d.moveTargetX = wx
+                                d.moveTargetY = wy
+                                d.command = "move"
+                            end
                         end
                     else
                         dood.clearTargets(d)
@@ -260,15 +286,17 @@ function M.mousemoved(x, y, dx, dy, g)
 
     g.input.mouseWorldX, g.input.mouseWorldY = g.camera:worldCoords(x, y)
 
-    local hoveredShrine = nil
+    -- shrines
+    local hoveredShrineId = nil
     for i, shrine in ipairs(g.shrines) do
-        if M.mouseHover(x, y, shrine.box) then
-            hoveredShrine = shrine
+        if M.mouseHover(g.input.mouseWorldX, g.input.mouseWorldY, shrine.box) then
+            hoveredShrineId = i
+            g.input.hoveringAny = true
             break
         end
-        if hoveredShrine then
-            g.input.hoveredShrineId = i
-        end
+    end
+    if hoveredShrineId then
+        g.input.hoveredShrineId = hoveredShrineId
     end
 
     -- middle mouse panning
@@ -297,6 +325,7 @@ function M.mousemoved(x, y, dx, dy, g)
         graphics.getDraggingBox(x, y, g)
     end
 
+    --squads
     if g.input.hoveringSquadsContainer then
         for i, squad in ipairs(g.localPlayer.squads) do
             squad.infoBarButton.hovered = M.mouseHover(x, y, squad.infoBarButton.box) and not g.input.leftClickDown

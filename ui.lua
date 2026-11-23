@@ -33,6 +33,31 @@ function M.draggingBox(g)
     end
 end
 
+function M.drawHealthBar(value, max, x, y, w, h)
+    local plw = love.graphics.getLineWidth()
+    local pc = getColor()
+
+    setColor(colors.transparentGray)
+    love.graphics.setLineWidth(2)
+    graphics.rectangle("line", x, y, w, h)
+
+    local percent = math.max(0, math.min(1, value / max))
+    local color = colors.Green
+    if percent <= 0.50 then
+        color = colors.Yellow
+    end
+    if percent <= 0.20 then
+        color = colors.Red
+    end
+    setColor(color)
+    love.graphics.rectangle("fill", x, y, w * percent, h)
+    -- setColor(colors.transparentGray)
+    -- love.graphics.printf(percent * 100, x, y, w, "center")
+
+    love.graphics.setLineWidth(plw)
+    setColor(pc)
+end
+
 function M.infoBar(g)
     local previousFont = love.graphics.getFont()
     local previousColor = getColor()
@@ -79,7 +104,8 @@ function M.infoBar(g)
             0, 4, 4
         )
         love.graphics.setFont(fonts.slabsInfoBar)
-        love.graphics.printf(d.name, d.infoBarBox.x, d.infoBarBox.y + 5, d.infoBarBox.w, "center")
+        M.drawHealthBar(d.hp, d.maxHp, d.infoBarBox.x + 10, d.infoBarBox.y + 5, d.infoBarBox.w - 20, 5)
+        love.graphics.printf(d.name, d.infoBarBox.x, d.infoBarBox.y + 15, d.infoBarBox.w, "center")
         love.graphics.printf(d.state, d.infoBarBox.x, d.infoBarBox.y + d.infoBarBox.h - fontHeights.slabsInfoBar - 5, d.infoBarBox.w, "center")
     end
     if g.input.hoveredDood then

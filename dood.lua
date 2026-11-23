@@ -240,9 +240,22 @@ function M.clearTargets(d)
     end
 end
 
-function M.setAttackTarget(d, g, targetIndex)
+function M.setConvertTarget(d, g, targetIndex, type)
     M.clearTargets(d)
-    d.attackTarget = g.doods[targetIndex]
+    if type == "shrine" then
+        d.convertTarget = g.shrines[targetIndex]
+    else
+        d.convertTarget = g.doods[targetIndex]
+    end
+end
+
+function M.setAttackTarget(d, g, targetIndex, type)
+    M.clearTargets(d)
+    if type == "shrine" then
+        d.attackTarget = g.shrines[targetIndex]
+    else
+        d.attackTarget = g.doods[targetIndex]
+    end
     if d.attackTarget then
         d.attackTarget.attackers = d.attackTarget.attackers or {}
         d.attackTarget.attackers[d.index] = d
@@ -276,6 +289,16 @@ function M.healTarget(d, dt, target)
     end
 end
 
+local function convert(d, dt, target)
+    d.state = "convert"
+    local conversionRate = d.conversionRate or M.DEFAULTS.CONVERSION_RATE
+
+    if (target.team or target.color) ~= d.team then
+
+    end
+    target.fp = target.fp - conversionRate * dt
+end
+
 function M.shrineScan(d, g)
     local friendlyShrineDistances = {}
     local neutralShrineDistances = {}
@@ -284,7 +307,7 @@ function M.shrineScan(d, g)
     for i, s in ipairs(g.shrines) do
         local dis = love.physics.getDistance(d.fixture, s.fixture)
 
-        if s.team == d.color then
+        if s.team == d.team then
             friendlyShrineDistances[i] = dis
         elseif s.team == "neutral" then
             neutralShrineDistances[i] = dis
@@ -347,14 +370,14 @@ function M.doodScan(d, g)
         --     end
         -- end
 
-        if dd ~= d and dd.color ~= d.color and dd.hp > 0 and dd.state ~= "downed" then
+        if dd ~= d and dd.team ~= d.team and dd.hp > 0 and dd.state ~= "downed" then
             local dis = love.physics.getDistance(d.fixture, dd.fixture)
             if dis <= M.DEFAULTS.SCAN_RADIUS then
                 enemyDistances[ii] = dis
             end
         end
 
-        if dd ~= d and dd.color == d.color and dd.state == "downed" and dd.puller == nil then
+        if dd ~= d and dd.team == d.team and dd.state == "downed" and dd.puller == nil then
             local dis = love.physics.getDistance(d.fixture, dd.fixture)
             if dis <= M.DEFAULTS.SCAN_RADIUS then
                 downFriendlyDistances[ii] = dis
@@ -400,9 +423,9 @@ function M.getDoodBox(d)
         centerY = by + bh / 2,
     }
     d.arrow = {
-        d.box.centerX, d.box.y - 5,
-        d.box.centerX + d.box.w / 6, d.box.y - 10,
-        d.box.centerX - d.box.w / 6, d.box.y - 10
+        d.box.centerX, d.box.y - 2,
+        d.box.centerX + d.box.w / 6, d.box.y - 8,
+        d.box.centerX - d.box.w / 6, d.box.y - 8
     }
 end
 
@@ -451,24 +474,36 @@ function M.update(dt, g)
                 end
             end
 
+            -- convert```
+            if d.convertTarget then
+                local distance = love.physics.getDistance(d.fixture, d.convertTarget.fixture)
+
+                if distance <= d.collisionRadius * 3 then
+                    stopMove(d)
+                    local difX = (d.convertTarget.bodyX or d.convertTarget.x) - d.bodyX
+                    local difY = (d.convertTarget.bodyY or d.convertTarget.y) - d.bodyY
+                    setDirection(difX, difY, d)
+                    convert(d, g, d.convertTarget)
+
+                end
+            end
+
             -- attack
             if d.attackTarget then
                 local distance = love.physics.getDistance(d.fixture, d.attackTarget.fixture)
 
                 if distance <= d.collisionRadius * 2 then
+                    stopMove(d)
                     d.state = "fight"
-                    d.animation = d.animations.idle
-                    d.body:setLinearVelocity(0, 0)
-                    d.moveTargetX, d.moveTargetY = nil, nil
-                    d.route, d.routeIndex = nil, nil
-
                     if d.attackTimer <= 0 and d.state == "fight" then
-                        local difX = d.attackTarget.bodyX - d.bodyX
-                        local difY = d.attackTarget.bodyY - d.bodyY
+                        local difX = (d.attackTarget.bodyX or d.attackTarget.x) - d.bodyX
+                        local difY = (d.attackTarget.bodyY or d.attackTarget.y) - d.bodyY
 
                         setDirection(difX, difY, d)
                         d.attackTimer = M.DEFAULTS.ATTACK_TIME
-                        d.attackTarget.hp = d.attackTarget.hp - d.damage
+                        d.attackTarget.hp = d.attackTarget.hp - d.stats.damage
+
+                        -- dood target
                         d.attackTarget.animation = d.attackTarget.animations.hurt
                         d.attackTarget.hurtTimer = M.DEFAULTS.HURT_TIME
                         if d.attackTarget.command == nil and d.attackTarget.state ~= "fight" then
@@ -684,8 +719,8 @@ function M.newDood(x, y, color, g, ownerId, squadId)
         squadId = squadId,
         hp = M.DEFAULTS.HP,
         maxHp = M.DEFAULTS.HP,
-        damage = M.DEFAULTS.DAMAGE,
-        moveSpeed = M.DEFAULTS.MOVE_SPEED,
+        -- damage = M.DEFAULTS.DAMAGE,
+        -- moveSpeed = M.DEFAULTS.MOVE_SPEED,
         priority = "Default",
         state = "idle",
         dir = "down",
@@ -702,7 +737,7 @@ function M.newDood(x, y, color, g, ownerId, squadId)
         attackTimer = 0,
         hurtTimer = 0,
         scanTimer = love.math.random(0, 0.5),
-        color = color,
+        team = color,
         index = #g.doods + 1,
         body = body,
         bodyX = bodyX,
@@ -716,6 +751,11 @@ function M.newDood(x, y, color, g, ownerId, squadId)
         collisionOffsetY = collisionOffsetY,
         shape = shape,
         fixture = fixture,
+        stats = {
+            toughness = M.DEFAULTS.TOUGHNESS,
+            damage = M.DEFAULTS.DAMAGE,
+            moveSpeed = M.DEFAULTS.MOVE_SPEED,
+        },
     }
     dood.name = "Dood "..tostring(dood.index)
     M.getDoodBox(dood)

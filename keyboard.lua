@@ -92,7 +92,7 @@ function M.update(dt, g)
         if length > 0 then
             moveX = moveX / length
             moveY = moveY / length
-            d.body:setLinearVelocity(moveX * dood.DEFAULTS.MOVE_SPEED, moveY * dood.DEFAULTS.MOVE_SPEED)
+            d.body:setLinearVelocity(moveX * d.stats.moveSpeed, moveY * d.stats.moveSpeed)
             d.state = "walk"
             d.animation = d.animations.walk
 

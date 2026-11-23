@@ -1,6 +1,7 @@
 local M = {}
 
 M.fonts = {
+    slabsWorld = love.graphics.newFont("assets/fonts/ManlineSlabs-xRWVj.ttf", 9),
     debugWorld = love.graphics.newFont(10),
     debugHud = love.graphics.newFont(12),
     slabsTitle = love.graphics.newFont("assets/fonts/ManlineSlabs-xRWVj.ttf", 75),
@@ -45,12 +46,17 @@ M.modalContainer = {}
 local buttonPadding = 150
 local buttonH = M.fontHeights.slabsButtons * 2
 
+-- function M.getHealthBar(d)
+
+-- end
+
 function M.getDraggingBox(x, y, g)
+    local h = 25
     M.draggingBox = {
         x = x,
-        y = y - 50,
+        y = y - h,
         w = 50,
-        h = 50,
+        h = h,
     }
 end
 
